@@ -1,0 +1,95 @@
+{% extends "webhooks/base.html" %}
+
+{% block title %}Endpoints — Webhook Inspector{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-reception-4" style="color:#a78bfa;"></i> Endpoints</h1>
+  <a href="{% url 'webhooks:endpoint_create' %}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg"></i> New Endpoint
+  </a>
+</div>
+
+{% if endpoints %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Events</th>
+          <th>Created</th>
+          <th>Status</th>
+          <th>Receiver URL</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ep in endpoints %}
+        <tr>
+          <td>
+            <a href="{% url 'webhooks:endpoint_detail' ep.id %}" class="fw-semibold text-decoration-none" style="color:#e2e8f0;">
+              {{ ep.name }}
+            </a>
+            {% if ep.description %}
+              <div class="text-muted" style="font-size:0.75rem; margin-top:2px;">{{ ep.description|truncatechars:60 }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:0.875rem;">{{ ep.event_count }}</span>
+          </td>
+          <td>
+            <span class="text-muted" style="font-size:0.8125rem;">{{ ep.created_at|date:"M j, Y" }}</span>
+          </td>
+          <td>
+            {% if ep.is_active %}
+              <span class="badge rounded-pill badge-active">active</span>
+            {% else %}
+              <span class="badge rounded-pill badge-inactive">paused</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <code style="font-size:0.75rem; color:#a78bfa; font-family:'JetBrains Mono',monospace;">
+                /receive/{{ ep.slug }}/
+              </code>
+              <button class="btn-copy" onclick="copySlug(this, '{{ ep.slug }}')" title="Copy full URL">
+                <i class="bi bi-clipboard"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card">
+  <div class="card-body">
+    <div class="empty-state">
+      <i class="bi bi-reception-0"></i>
+      <p>No endpoints yet.<br>Create one to start receiving webhook events.</p>
+      <a href="{% url 'webhooks:endpoint_create' %}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg"></i> Create your first endpoint
+      </a>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copySlug(btn, slug) {
+  const url = window.location.origin + '/receive/' + slug + '/';
+  navigator.clipboard.writeText(url).then(() => {
+    btn.classList.add('copied');
+    btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '<i class="bi bi-clipboard"></i>';
+    }, 2000);
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends "webhooks/base.html" %}
+
+{% block title %}Event — {{ endpoint.name }} — Webhook Inspector{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'webhooks:endpoint_list' %}">Endpoints</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'webhooks:endpoint_detail' endpoint.id %}">{{ endpoint.name }}</a></li>
+    <li class="breadcrumb-item active">Event</li>
+  </ol>
+</nav>
+
+<div class="page-header">
+  <div class="d-flex align-items-center gap-3">
+    <h1>Event Detail</h1>
+    <span class="method-badge method-{{ event.method|lower }}">{{ event.method }}</span>
+  </div>
+  <a href="{% url 'webhooks:endpoint_detail' endpoint.id %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> Back
+  </a>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-md-3">
+    <div class="card p-3">
+      <div class="text-muted" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em;">Time</div>
+      <div style="font-family:'JetBrains Mono',monospace; font-size:0.875rem; margin-top:4px;">
+        {{ event.created_at|date:"H:i:s" }}<br>
+        <span style="font-size:0.75rem; color:#64748b;">{{ event.created_at|date:"M j, Y" }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-md-3">
+    <div class="card p-3">
+      <div class="text-muted" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em;">Source IP</div>
+      <code style="font-size:0.875rem; color:#a78bfa; margin-top:4px; display:block;">
+        {{ event.source_ip|default:"unknown" }}
+      </code>
+    </div>
+  </div>
+  <div class="col-sm-6 col-md-3">
+    <div class="card p-3">
+      <div class="text-muted" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em;">Body Size</div>
+      <div style="font-family:'JetBrains Mono',monospace; font-size:0.875rem; margin-top:4px;">
+        {{ event.body_size_display }}
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-md-3">
+    <div class="card p-3">
+      <div class="text-muted" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em;">Content Type</div>
+      <code style="font-size:0.8rem; color:#94a3b8; margin-top:4px; display:block; word-break:break-all;">
+        {{ content_type }}
+      </code>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header">Headers</div>
+  <div class="card-body p-0">
+    <table class="table table-hover align-middle mb-0" style="font-size:0.8125rem;">
+      <tbody>
+        {% for name, value in event.headers.items %}
+        <tr>
+          <td style="width:35%; font-family:'JetBrains Mono',monospace; color:#7c3aed; font-size:0.8rem; padding-left:1.25rem;">
+            {{ name }}
+          </td>
+          <td style="font-family:'JetBrains Mono',monospace; color:#94a3b8; word-break:break-all;">
+            {{ value }}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="2" class="text-muted text-center py-3" style="font-size:0.875rem;">No headers captured</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if event.query_params %}
+<div class="card mb-3">
+  <div class="card-header">Query Parameters</div>
+  <div class="card-body p-0">
+    <table class="table table-hover align-middle mb-0" style="font-size:0.8125rem;">
+      <tbody>
+        {% for name, values in event.query_params.items %}
+        <tr>
+          <td style="width:35%; font-family:'JetBrains Mono',monospace; color:#7c3aed; font-size:0.8rem; padding-left:1.25rem;">
+            {{ name }}
+          </td>
+          <td style="font-family:'JetBrains Mono',monospace; color:#94a3b8;">
+            {% for v in values %}{{ v }}{% if not forloop.last %}, {% endif %}{% endfor %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span>Body</span>
+    {% if event.is_json %}
+      <span style="font-size:0.7rem; color:#4ade80; background:#052e16; padding:2px 8px; border-radius:4px; border:1px solid #166534;">JSON</span>
+    {% endif %}
+  </div>
+  <div class="card-body p-3">
+    {% if event.body %}
+      {% if body_pretty %}
+        <pre class="code-block">{{ body_pretty }}</pre>
+      {% else %}
+        <pre class="code-block">{{ event.body }}</pre>
+      {% endif %}
+    {% else %}
+      <p class="text-muted mb-0" style="font-size:0.875rem; padding:0.5rem 0;">(empty body)</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

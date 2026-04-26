@@ -1,0 +1,220 @@
+{% extends "webhooks/base.html" %}
+
+{% block title %}{{ endpoint.name }} — Webhook Inspector{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'webhooks:endpoint_list' %}">Endpoints</a></li>
+    <li class="breadcrumb-item active">{{ endpoint.name }}</li>
+  </ol>
+</nav>
+
+<div class="page-header">
+  <div class="d-flex align-items-center gap-3">
+    <h1>{{ endpoint.name }}</h1>
+    {% if endpoint.is_active %}
+      <span class="badge rounded-pill badge-active">
+        <span class="pulse-dot me-1"></span>active
+      </span>
+    {% else %}
+      <span class="badge rounded-pill badge-inactive">paused</span>
+    {% endif %}
+  </div>
+  <a href="{% url 'webhooks:endpoint_delete' endpoint.id %}" class="btn btn-sm btn-outline-danger">
+    <i class="bi bi-trash3"></i> Delete
+  </a>
+</div>
+
+{% if endpoint.description %}
+  <p class="text-muted mb-4" style="font-size:0.875rem;">{{ endpoint.description }}</p>
+{% endif %}
+
+<div class="card mb-4">
+  <div class="card-header">Receiver URL</div>
+  <div class="card-body p-3">
+    <div class="url-box">
+      <code id="receiver-url">{{ receiver_url }}</code>
+      <button class="btn-copy" id="copy-btn" onclick="copyUrl()" title="Copy URL">
+        <i class="bi bi-clipboard"></i>
+      </button>
+    </div>
+    <p class="text-muted mt-2 mb-0" style="font-size:0.75rem;">
+      Send any HTTP request to this URL — GET, POST, PUT, PATCH, DELETE are all captured.
+    </p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span>Event Log</span>
+    <span id="poll-indicator" class="d-flex align-items-center gap-2 text-muted" style="font-size:0.75rem;">
+      <span class="pulse-dot"></span> listening
+    </span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th style="width:80px;">Method</th>
+          <th>Time</th>
+          <th>Source IP</th>
+          <th>Size</th>
+          <th>Headers preview</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="events-tbody">
+        {% if events %}
+          {% for event in events %}
+          <tr>
+            <td>
+              <span class="method-badge method-{{ event.method|lower }}">{{ event.method }}</span>
+            </td>
+            <td>
+              <span style="font-family:'JetBrains Mono',monospace; font-size:0.8rem;">
+                {{ event.created_at|date:"H:i:s" }}
+              </span>
+              <div class="text-muted" style="font-size:0.7rem;">{{ event.created_at|date:"M j" }}</div>
+            </td>
+            <td>
+              <code style="font-size:0.75rem; color:#94a3b8;">{{ event.source_ip|default:"—" }}</code>
+            </td>
+            <td>
+              <span style="font-family:'JetBrains Mono',monospace; font-size:0.8rem;">{{ event.body_size_display }}</span>
+            </td>
+            <td>
+              {% for name, value in event.preview_headers %}
+                <div style="font-size:0.72rem; color:#64748b;">
+                  <span style="color:#7c3aed;">{{ name }}:</span> {{ value|truncatechars:40 }}
+                </div>
+              {% empty %}
+                <span class="text-muted" style="font-size:0.75rem;">—</span>
+              {% endfor %}
+            </td>
+            <td class="text-end">
+              <a href="{% url 'webhooks:event_detail' endpoint.id event.id %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">
+                View <i class="bi bi-arrow-right"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr id="empty-state-row">
+            <td colspan="6">
+              <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <p>No events yet. Send a request to the receiver URL above.</p>
+                <code style="font-size:0.8rem; color:#a78bfa; background:#16161f; padding:0.4em 0.75em; border-radius:6px;">
+                  curl -X POST {{ receiver_url }} -H "Content-Type: application/json" -d '{"hello":"world"}'
+                </code>
+              </div>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const endpointId = '{{ endpoint.id }}';
+  const pollUrl = '{% url "webhooks:events_poll" endpoint.id %}';
+  let newestTs = '{% if events %}{{ events.0.created_at.isoformat }}{% endif %}';
+  let intervalId = null;
+
+  function methodClass(method) {
+    const m = method.toLowerCase();
+    const map = { post: 'post', get: 'get', put: 'put', patch: 'patch', delete: 'delete' };
+    return map[m] || 'other';
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function buildRow(ev) {
+    const d = new Date(ev.created_at);
+    const time = d.toLocaleTimeString('en-US', { hour12: false });
+    const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+    let headersHtml = ev.preview_headers.length
+      ? ev.preview_headers.map(([n, v]) =>
+          `<div style="font-size:0.72rem;color:#64748b;"><span style="color:#7c3aed;">${escapeHtml(n)}:</span> ${escapeHtml(String(v).substring(0, 40))}</div>`
+        ).join('')
+      : '<span class="text-muted" style="font-size:0.75rem;">—</span>';
+
+    const tr = document.createElement('tr');
+    tr.style.animation = 'fadeIn 0.3s ease';
+    tr.innerHTML = `
+      <td><span class="method-badge method-${methodClass(ev.method)}">${escapeHtml(ev.method)}</span></td>
+      <td>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;">${time}</span>
+        <div class="text-muted" style="font-size:0.7rem;">${date}</div>
+      </td>
+      <td><code style="font-size:0.75rem;color:#94a3b8;">${escapeHtml(ev.source_ip || '—')}</code></td>
+      <td><span style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;">${escapeHtml(ev.body_size_display)}</span></td>
+      <td>${headersHtml}</td>
+      <td class="text-end">
+        <a href="${ev.detail_url}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">
+          View <i class="bi bi-arrow-right"></i>
+        </a>
+      </td>
+    `;
+    return tr;
+  }
+
+  function poll() {
+    const url = newestTs ? `${pollUrl}?since=${encodeURIComponent(newestTs)}` : pollUrl;
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.events || data.events.length === 0) return;
+        newestTs = data.events[0].created_at;
+        const tbody = document.getElementById('events-tbody');
+        const emptyRow = document.getElementById('empty-state-row');
+        if (emptyRow) emptyRow.remove();
+        data.events.forEach(ev => tbody.prepend(buildRow(ev)));
+      })
+      .catch(() => {});
+  }
+
+  function startPolling() {
+    if (!intervalId) intervalId = setInterval(poll, 3000);
+  }
+
+  function stopPolling() {
+    if (intervalId) { clearInterval(intervalId); intervalId = null; }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    document.hidden ? stopPolling() : startPolling();
+  });
+
+  startPolling();
+})();
+
+function copyUrl() {
+  const url = document.getElementById('receiver-url').textContent.trim();
+  const btn = document.getElementById('copy-btn');
+  navigator.clipboard.writeText(url).then(() => {
+    btn.classList.add('copied');
+    btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '<i class="bi bi-clipboard"></i>';
+    }, 2000);
+  });
+}
+</script>
+<style>
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+</style>
+{% endblock %}
