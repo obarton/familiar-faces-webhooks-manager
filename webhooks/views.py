@@ -120,6 +120,18 @@ def events_poll(request, id):
     ]})
 
 
+@login_required
+def endpoint_test(request, id):
+    endpoint = get_object_or_404(WebhookEndpoint, id=id)
+    receiver_url = request.build_absolute_uri(
+        reverse('webhooks:receive_webhook', kwargs={'slug': endpoint.slug})
+    )
+    return render(request, 'webhooks/endpoint_test.html', {
+        'endpoint': endpoint,
+        'receiver_url': receiver_url,
+    })
+
+
 @csrf_exempt
 def receive_webhook(request, slug):
     endpoint = WebhookEndpoint.objects.filter(slug=slug, is_active=True).first()

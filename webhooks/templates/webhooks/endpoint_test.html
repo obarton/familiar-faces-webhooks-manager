@@ -1,0 +1,162 @@
+{% extends "webhooks/base.html" %}
+
+{% block title %}Send Test — {{ endpoint.name }} — Webhook Inspector{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'webhooks:endpoint_list' %}">Endpoints</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'webhooks:endpoint_detail' endpoint.id %}">{{ endpoint.name }}</a></li>
+    <li class="breadcrumb-item active">Send Test</li>
+  </ol>
+</nav>
+
+<div class="page-header">
+  <h1>Send Test Webhook</h1>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header">Target URL</div>
+  <div class="card-body p-3">
+    <div class="url-box">
+      <code id="receiver-url">{{ receiver_url }}</code>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Request</div>
+  <div class="card-body p-4">
+    <form id="test-form">
+      <div class="row g-3 mb-3">
+        <div class="col-sm-3">
+          <label class="form-label" for="method">Method</label>
+          <select id="method" class="form-select">
+            <option value="POST" selected>POST</option>
+            <option value="GET">GET</option>
+            <option value="PUT">PUT</option>
+            <option value="PATCH">PATCH</option>
+            <option value="DELETE">DELETE</option>
+          </select>
+        </div>
+        <div class="col-sm-9">
+          <label class="form-label" for="content-type">Content-Type</label>
+          <input id="content-type" type="text" class="form-control" value="application/json">
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="extra-headers">
+          Extra Headers
+          <span class="text-muted ms-1" style="font-size:0.75rem; font-weight:400;">JSON object — optional</span>
+        </label>
+        <textarea id="extra-headers" class="form-control" rows="3"
+          style="font-family:'JetBrains Mono',monospace; font-size:0.8125rem;"
+          placeholder='{"X-My-Header": "value"}'></textarea>
+      </div>
+
+      <div class="mb-4" id="body-section">
+        <label class="form-label" for="body">Body</label>
+        <textarea id="body" class="form-control" rows="8"
+          style="font-family:'JetBrains Mono',monospace; font-size:0.8125rem;">{
+
+}</textarea>
+      </div>
+
+      <div id="result" class="mb-4" style="display:none;"></div>
+
+      <button type="submit" id="send-btn" class="btn btn-primary">
+        <i class="bi bi-send me-1"></i> Send Webhook
+      </button>
+      <a href="{% url 'webhooks:endpoint_detail' endpoint.id %}" class="btn btn-outline-secondary ms-2">
+        Cancel
+      </a>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const receiverUrl = document.getElementById('receiver-url').textContent.trim();
+  const detailUrl = '{% url "webhooks:endpoint_detail" endpoint.id %}';
+  const methodEl = document.getElementById('method');
+  const bodySection = document.getElementById('body-section');
+  const bodyEl = document.getElementById('body');
+  const sendBtn = document.getElementById('send-btn');
+  const resultEl = document.getElementById('result');
+
+  const noBodyMethods = new Set(['GET', 'HEAD']);
+
+  methodEl.addEventListener('change', function () {
+    const hide = noBodyMethods.has(this.value);
+    bodySection.style.opacity = hide ? '0.4' : '1';
+    bodySection.style.pointerEvents = hide ? 'none' : '';
+  });
+
+  document.getElementById('test-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    resultEl.style.display = 'none';
+
+    const method = methodEl.value;
+    const contentType = document.getElementById('content-type').value.trim();
+    const extraHeadersRaw = document.getElementById('extra-headers').value.trim();
+
+    let headers = {};
+    if (extraHeadersRaw) {
+      try {
+        headers = JSON.parse(extraHeadersRaw);
+        if (typeof headers !== 'object' || Array.isArray(headers)) {
+          throw new Error('Headers must be a JSON object');
+        }
+      } catch (err) {
+        showResult('error', 'Invalid JSON in Extra Headers: ' + err.message);
+        return;
+      }
+    }
+    if (contentType) {
+      headers['Content-Type'] = contentType;
+    }
+
+    const opts = { method, headers };
+    if (!noBodyMethods.has(method) && bodyEl.value.trim()) {
+      opts.body = bodyEl.value;
+    }
+
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending…';
+
+    try {
+      const res = await fetch(receiverUrl, opts);
+      showResult('success', 'Webhook sent — HTTP ' + res.status);
+    } catch (err) {
+      showResult('error', 'Network error: ' + err.message);
+    } finally {
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = '<i class="bi bi-send me-1"></i> Send Webhook';
+    }
+  });
+
+  function showResult(type, message) {
+    const isSuccess = type === 'success';
+    resultEl.className = 'mb-4 alert ' + (isSuccess ? 'alert-success' : 'alert-danger');
+    resultEl.style.display = '';
+    resultEl.innerHTML = [
+      '<div class="d-flex align-items-center justify-content-between gap-3">',
+      '<span><i class="bi bi-' + (isSuccess ? 'check-circle' : 'exclamation-circle') + ' me-2"></i>' + escapeHtml(message) + '</span>',
+      isSuccess ? '<a href="' + detailUrl + '" class="btn btn-sm btn-success">View events <i class="bi bi-arrow-right"></i></a>' : '',
+      '</div>',
+    ].join('');
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+})();
+</script>
+{% endblock %}
