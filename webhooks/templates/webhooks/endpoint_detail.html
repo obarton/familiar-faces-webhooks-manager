@@ -120,6 +120,11 @@
       </tbody>
     </table>
   </div>
+  <div id="load-more-container" class="text-center p-3{% if not has_more %} d-none{% endif %}">
+    <button id="load-more-btn" class="btn btn-sm btn-outline-secondary" onclick="loadOlder()">
+      Load older events <i class="bi bi-chevron-down"></i>
+    </button>
+  </div>
 </div>
 {% endblock %}
 
@@ -128,7 +133,10 @@
 (function () {
   const endpointId = '{{ endpoint.id }}';
   const pollUrl = '{% url "webhooks:events_poll" endpoint.id %}';
+  const loadOlderUrl = '{% url "webhooks:events_load_older" endpoint.id %}';
   let newestTs = '{% if events %}{{ events.0.created_at.isoformat }}{% endif %}';
+  let oldestTs = '{{ oldest_ts }}';
+  let hasMore = {{ has_more|yesno:"true,false" }};
   let intervalId = null;
 
   function methodClass(method) {
@@ -145,7 +153,7 @@
       .replace(/"/g, '&quot;');
   }
 
-  function buildRow(ev) {
+  function buildRow(ev, animate = true) {
     const d = new Date(ev.created_at);
     const time = d.toLocaleTimeString('en-US', { hour12: false });
     const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -157,7 +165,7 @@
       : '<span class="text-muted" style="font-size:0.75rem;">—</span>';
 
     const tr = document.createElement('tr');
-    tr.style.animation = 'fadeIn 0.3s ease';
+    if (animate) tr.style.animation = 'fadeIn 0.3s ease';
     tr.innerHTML = `
       <td><span class="method-badge method-${methodClass(ev.method)}">${escapeHtml(ev.method)}</span></td>
       <td>
@@ -189,6 +197,35 @@
         data.events.forEach(ev => tbody.prepend(buildRow(ev)));
       })
       .catch(() => {});
+  }
+
+  function loadOlder() {
+    const btn = document.getElementById('load-more-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Loading…';
+
+    const url = oldestTs ? `${loadOlderUrl}?before=${encodeURIComponent(oldestTs)}` : loadOlderUrl;
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        const tbody = document.getElementById('events-tbody');
+        data.events.forEach(ev => tbody.appendChild(buildRow(ev, false)));
+        if (data.events.length > 0) {
+          oldestTs = data.events[data.events.length - 1].created_at;
+        }
+        hasMore = data.has_more;
+        const container = document.getElementById('load-more-container');
+        if (hasMore) {
+          btn.disabled = false;
+          btn.innerHTML = 'Load older events <i class="bi bi-chevron-down"></i>';
+        } else {
+          container.classList.add('d-none');
+        }
+      })
+      .catch(() => {
+        btn.disabled = false;
+        btn.innerHTML = 'Load older events <i class="bi bi-chevron-down"></i>';
+      });
   }
 
   function startPolling() {

@@ -17,6 +17,22 @@ from .models import WebhookEndpoint, WebhookEvent
 
 logger = logging.getLogger(__name__)
 
+PAGE_SIZE = 25
+
+
+def _serialize_event(ev, endpoint_id):
+    return {
+        'id': str(ev.id),
+        'method': ev.method,
+        'source_ip': ev.source_ip or '',
+        'body_size': ev.body_size,
+        'body_size_display': ev.body_size_display,
+        'created_at': ev.created_at.isoformat(),
+        'preview_headers': ev.preview_headers,
+        'detail_url': reverse('webhooks:event_detail',
+                              kwargs={'id': str(endpoint_id), 'event_id': str(ev.id)}),
+    }
+
 
 @login_required
 def endpoint_list(request):
@@ -46,13 +62,18 @@ def endpoint_create(request):
 @login_required
 def endpoint_detail(request, id):
     endpoint = get_object_or_404(WebhookEndpoint, id=id)
-    events = endpoint.events.all()[:50]
+    events = list(endpoint.events.all()[:PAGE_SIZE + 1])
+    has_more = len(events) > PAGE_SIZE
+    events = events[:PAGE_SIZE]
+    oldest_ts = events[-1].created_at.isoformat() if events else ''
     receiver_url = request.build_absolute_uri(
         reverse('webhooks:receive_webhook', kwargs={'slug': endpoint.slug})
     )
     return render(request, 'webhooks/endpoint_detail.html', {
         'endpoint': endpoint,
         'events': events,
+        'has_more': has_more,
+        'oldest_ts': oldest_ts,
         'receiver_url': receiver_url,
     })
 
@@ -105,20 +126,25 @@ def events_poll(request, id):
         if since_dt:
             qs = qs.filter(created_at__gt=since_dt)
     events = qs.order_by('-created_at')[:20]
-    return JsonResponse({'events': [
-        {
-            'id': str(ev.id),
-            'method': ev.method,
-            'source_ip': ev.source_ip or '',
-            'body_size': ev.body_size,
-            'body_size_display': ev.body_size_display,
-            'created_at': ev.created_at.isoformat(),
-            'preview_headers': ev.preview_headers,
-            'detail_url': reverse('webhooks:event_detail',
-                                  kwargs={'id': str(id), 'event_id': str(ev.id)}),
-        }
-        for ev in events
-    ]})
+    return JsonResponse({'events': [_serialize_event(ev, id) for ev in events]})
+
+
+@login_required
+def events_load_older(request, id):
+    endpoint = get_object_or_404(WebhookEndpoint, id=id)
+    before_str = request.GET.get('before')
+    qs = WebhookEvent.objects.filter(endpoint=endpoint)
+    if before_str:
+        before_dt = parse_datetime(before_str)
+        if before_dt:
+            qs = qs.filter(created_at__lt=before_dt)
+    events = list(qs.order_by('-created_at')[:PAGE_SIZE + 1])
+    has_more = len(events) > PAGE_SIZE
+    events = events[:PAGE_SIZE]
+    return JsonResponse({
+        'events': [_serialize_event(ev, id) for ev in events],
+        'has_more': has_more,
+    })
 
 
 @login_required

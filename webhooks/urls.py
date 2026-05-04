@@ -10,6 +10,7 @@ urlpatterns = [
     path('<uuid:id>/delete/', views.endpoint_delete, name='endpoint_delete'),
     path('<uuid:id>/events/<uuid:event_id>/', views.event_detail, name='event_detail'),
     path('<uuid:id>/events/poll/', views.events_poll, name='events_poll'),
+    path('<uuid:id>/events/older/', views.events_load_older, name='events_load_older'),
     path('<uuid:id>/test/', views.endpoint_test, name='endpoint_test'),
     path('receive/<slug:slug>/', views.receive_webhook, name='receive_webhook'),
 ]
