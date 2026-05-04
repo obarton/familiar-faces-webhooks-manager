@@ -45,6 +45,7 @@ class WebhookEvent(BaseModel):
     query_params = models.JSONField(default=dict)
     source_ip = models.GenericIPAddressField(null=True, blank=True)
     sheet_tag = models.CharField(max_length=200, null=True, blank=True)
+    mailchimp_tag = models.CharField(max_length=200, null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']

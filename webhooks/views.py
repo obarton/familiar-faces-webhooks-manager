@@ -171,14 +171,34 @@ def receive_webhook(request, slug):
         payload = json.loads(body)
         raw_name = payload.get('event_name', '')
         raw_start = payload.get('event_start', '')
-        if ':' in raw_name and raw_start:
-            city = raw_name.split(':', 1)[1].strip()
-            event_date = datetime.fromisoformat(raw_start.replace('Z', '+00:00')).date()
-            from .sheets import get_event_tag
-            tag = get_event_tag(city, event_date)
-            if tag:
-                event.sheet_tag = tag
-                event.save(update_fields=['sheet_tag'])
+
+        if raw_name and raw_start:
+            from .sheets import extract_city, get_event_tag, get_mailchimp_tag
+            city = extract_city(raw_name)
+            if city:
+                event_date = datetime.fromisoformat(raw_start.replace('Z', '+00:00')).date()
+                tag = get_event_tag(city, event_date)
+                if tag:
+                    event.sheet_tag = tag
+            mc_tag = get_mailchimp_tag(raw_name)
+            if mc_tag:
+                event.mailchimp_tag = mc_tag
+            if event.sheet_tag or event.mailchimp_tag:
+                update_fields = [f for f in ('sheet_tag', 'mailchimp_tag') if getattr(event, f)]
+                event.save(update_fields=update_fields)
+
+        email = payload.get('account_email', '')
+        if email:
+            from .mailchimp_client import add_tags, upsert_subscriber
+            upsert_subscriber(
+                email=email,
+                first_name=payload.get('account_first_name', ''),
+                last_name=payload.get('account_last_name', ''),
+                phone=payload.get('account_phone', ''),
+            )
+            tags = [t for t in (event.sheet_tag, event.mailchimp_tag) if t]
+            if tags:
+                add_tags(email, tags)
     except Exception:
         pass
 

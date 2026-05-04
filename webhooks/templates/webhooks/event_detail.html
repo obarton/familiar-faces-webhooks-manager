@@ -65,6 +65,16 @@
     </div>
   </div>
   {% endif %}
+  {% if event.mailchimp_tag %}
+  <div class="col-sm-6 col-md-3">
+    <div class="card p-3" style="border-color:#1d4ed8;">
+      <div class="text-muted" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em;">Mailchimp Tag</div>
+      <code style="font-size:0.875rem; color:#93c5fd; margin-top:4px; display:block;">
+        {{ event.mailchimp_tag }}
+      </code>
+    </div>
+  </div>
+  {% endif %}
 </div>
 
 <div class="card mb-3">

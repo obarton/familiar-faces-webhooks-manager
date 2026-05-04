@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from datetime import date, datetime
 
 import gspread
@@ -12,6 +13,41 @@ logger = logging.getLogger(__name__)
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
 _client = None
+
+CITY_TO_MAILCHIMP_TAG = {
+    'san francisco': 'Familiar Faces Bay Area',
+    'la': 'Familiar Faces LA',
+    'los angeles': 'Familiar Faces LA',
+    'oakland': 'Familiar Faces Bay Area',
+    'phoenix': 'Familiar Faces Phoenix',
+    'new york city': 'Familiar Faces NYC',
+    'nyc': 'Familiar Faces NYC',
+    'san diego': 'Familiar Faces San Diego',
+    'seattle': 'Familiar Faces Seattle',
+    'vancouver': 'Familiar Faces Vancouver',
+    'austin': 'Familiar Faces Austin',
+    'portland': 'Familiar Faces Portland',
+    'las vegas': 'Familiar Faces Las Vegas',
+    'dc': 'Familiar Faces DC',
+}
+
+
+def extract_city(event_name: str) -> str:
+    text = event_name.replace(' ', ' ').strip()
+    match = re.search(r':\s*([A-Za-zÀ-ÖØ-öø-ÿ .\'-]+)$', text)
+    if match:
+        return match.group(1).strip()
+    match = re.search(r'Familiar Faces\s+([^(]+?)(?:\s*\(.*\))?$', text)
+    if match:
+        return match.group(1).strip()
+    return ''
+
+
+def get_mailchimp_tag(event_name: str) -> str | None:
+    city = extract_city(event_name)
+    if not city:
+        return None
+    return CITY_TO_MAILCHIMP_TAG.get(city.lower())
 
 
 def _get_client():
