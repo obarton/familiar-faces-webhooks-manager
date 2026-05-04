@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -157,7 +158,7 @@ def receive_webhook(request, slug):
         body += '\n[body truncated at 1 MB]'
         logger.warning('Webhook body truncated for endpoint %s', endpoint.slug)
 
-    WebhookEvent.objects.create(
+    event = WebhookEvent.objects.create(
         endpoint=endpoint,
         method=request.method,
         headers=headers,
@@ -165,4 +166,20 @@ def receive_webhook(request, slug):
         query_params=dict(request.GET.lists()),
         source_ip=source_ip,
     )
+
+    try:
+        payload = json.loads(body)
+        raw_name = payload.get('event_name', '')
+        raw_start = payload.get('event_start', '')
+        if ':' in raw_name and raw_start:
+            city = raw_name.split(':', 1)[1].strip()
+            event_date = datetime.fromisoformat(raw_start.replace('Z', '+00:00')).date()
+            from .sheets import get_event_tag
+            tag = get_event_tag(city, event_date)
+            if tag:
+                event.sheet_tag = tag
+                event.save(update_fields=['sheet_tag'])
+    except Exception:
+        pass
+
     return HttpResponse('OK', status=200)

@@ -55,6 +55,16 @@
       </code>
     </div>
   </div>
+  {% if event.sheet_tag %}
+  <div class="col-sm-6 col-md-3">
+    <div class="card p-3" style="border-color:#7c3aed;">
+      <div class="text-muted" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em;">Tag</div>
+      <code style="font-size:0.875rem; color:#a78bfa; margin-top:4px; display:block;">
+        {{ event.sheet_tag }}
+      </code>
+    </div>
+  </div>
+  {% endif %}
 </div>
 
 <div class="card mb-3">
