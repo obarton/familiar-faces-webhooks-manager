@@ -228,6 +228,8 @@
       });
   }
 
+  window.loadOlder = loadOlder;
+
   function startPolling() {
     if (!intervalId) intervalId = setInterval(poll, 3000);
   }
