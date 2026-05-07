@@ -29,6 +29,7 @@ CITY_TO_MAILCHIMP_TAG = {
     'portland': 'Familiar Faces Portland',
     'las vegas': 'Familiar Faces Las Vegas',
     'dc': 'Familiar Faces DC',
+    'dallas': 'Familiar Faces Dallas'
 }
 
 
