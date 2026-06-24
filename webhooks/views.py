@@ -4,6 +4,8 @@ from datetime import datetime
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import RequestDataTooBig, TooManyFieldsSent, ValidationError
+from django.core.validators import validate_ipv46_address
 from django.db.models import Count, Subquery, OuterRef
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse, JsonResponse
@@ -169,6 +171,14 @@ def receive_webhook(request, slug):
         request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', ''))
         .split(',')[0].strip()
     ) or None
+    # source_ip is stored in a GenericIPAddressField (inet on Postgres), which
+    # rejects malformed values at insert time. Drop anything that isn't a valid
+    # IP so a spoofed/odd X-Forwarded-For header can't 500 the receiver.
+    if source_ip is not None:
+        try:
+            validate_ipv46_address(source_ip)
+        except ValidationError:
+            source_ip = None
 
     headers = {}
     for key, value in request.META.items():
@@ -178,7 +188,14 @@ def receive_webhook(request, slug):
             headers[key.replace('_', '-').title()] = value
 
     MAX_BODY = 1 * 1024 * 1024
-    raw = request.body
+    # request.body raises RequestDataTooBig when the payload exceeds
+    # DATA_UPLOAD_MAX_MEMORY_SIZE, before our own truncation can run. Treat an
+    # oversized/unreadable body as empty rather than letting it 500.
+    try:
+        raw = request.body
+    except (RequestDataTooBig, TooManyFieldsSent):
+        logger.warning('Webhook body too large for endpoint %s; storing empty body', endpoint.slug)
+        raw = b''
     body = raw[:MAX_BODY].decode('utf-8', errors='replace')
     if len(raw) > MAX_BODY:
         body += '\n[body truncated at 1 MB]'
@@ -226,6 +243,9 @@ def receive_webhook(request, slug):
             if tags:
                 add_tags(email, tags)
     except Exception:
-        pass
+        # Integration (Sheets/Mailchimp) failures must never fail the receiver,
+        # but they should be visible instead of silently swallowed.
+        logger.exception('Webhook post-processing failed for endpoint %s (event %s)',
+                         endpoint.slug, event.id)
 
     return HttpResponse('OK', status=200)
