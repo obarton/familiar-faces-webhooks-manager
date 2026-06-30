@@ -102,12 +102,15 @@ def _get_client():
 # raw Google Sheets serial number depending on the cell's type and the sheet's
 # locale/format. Tolerate all of them rather than assuming one display format.
 _DATE_FORMATS = (
-    '%a %b %d %Y',   # Sat Jul 04 2026  (displayed format in this sheet)
+    '%a %b %d %Y',   # Sat Jul 04 2026  (abbreviated month, the common form here)
     '%a %b %d, %Y',  # Sat Jul 04, 2026
+    '%a %B %d %Y',   # Sun April 26 2026  (full month name, also seen in this sheet)
+    '%a %B %d, %Y',  # Sun April 26, 2026
     '%Y-%m-%d',      # 2026-07-04
     '%m/%d/%Y',      # 07/04/2026
     '%b %d %Y',      # Jul 04 2026
     '%B %d %Y',      # July 04 2026
+    '%B %d, %Y',     # July 04, 2026
 )
 
 # Google Sheets serial dates count days from 1899-12-30.
