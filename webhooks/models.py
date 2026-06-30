@@ -75,3 +75,12 @@ class WebhookEvent(BaseModel):
     @property
     def preview_headers(self):
         return list(self.headers.items())[:3]
+
+    @property
+    def replay_of(self):
+        """Original event id if this event was created by a manual replay."""
+        return self.headers.get('X-Webhook-Replay-Of')
+
+    @property
+    def is_replay(self):
+        return bool(self.replay_of)

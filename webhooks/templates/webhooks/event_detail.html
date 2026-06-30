@@ -15,10 +15,22 @@
   <div class="d-flex align-items-center gap-3">
     <h1>Event Detail</h1>
     <span class="method-badge method-{{ event.method|lower }}">{{ event.method }}</span>
+    {% if event.is_replay %}
+      <span style="font-size:0.7rem; color:#fbbf24; background:#3f2d00; padding:2px 8px; border-radius:4px; border:1px solid #92750a;" title="Replay of {{ event.replay_of }}">REPLAY</span>
+    {% endif %}
   </div>
-  <a href="{% url 'webhooks:endpoint_detail' endpoint.id %}" class="btn btn-sm btn-outline-secondary">
-    <i class="bi bi-arrow-left"></i> Back
-  </a>
+  <div class="d-flex align-items-center gap-2">
+    <form method="post" action="{% url 'webhooks:event_replay' endpoint.id event.id %}" class="m-0">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-sm btn-outline-primary"
+              title="Re-deliver this event through the receiver, re-running tag resolution and Mailchimp sync">
+        <i class="bi bi-arrow-repeat"></i> Replay
+      </button>
+    </form>
+    <a href="{% url 'webhooks:endpoint_detail' endpoint.id %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> Back
+    </a>
+  </div>
 </div>
 
 <div class="row g-3 mb-4">

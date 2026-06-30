@@ -210,8 +210,21 @@ def receive_webhook(request, slug):
         source_ip=source_ip,
     )
 
+    _process_event(event)
+
+    return HttpResponse('OK', status=200)
+
+
+def _process_event(event):
+    """Resolve event/market tags and sync the subscriber to Mailchimp.
+
+    Shared by the live receiver and the manual replay action. Integration
+    (Sheets/Mailchimp) failures are logged but never raised so the caller's
+    response is unaffected.
+    """
+    endpoint = event.endpoint
     try:
-        payload = json.loads(body)
+        payload = json.loads(event.body)
         raw_name = payload.get('event_name', '')
         raw_start = payload.get('event_start', '')
 
@@ -260,4 +273,26 @@ def receive_webhook(request, slug):
         logger.exception('Webhook post-processing failed for endpoint %s (event %s)',
                          endpoint.slug, event.id)
 
-    return HttpResponse('OK', status=200)
+
+@login_required
+def event_replay(request, id, event_id):
+    endpoint = get_object_or_404(WebhookEndpoint, id=id)
+    original = get_object_or_404(WebhookEvent, id=event_id, endpoint=endpoint)
+    if request.method != 'POST':
+        return redirect('webhooks:event_detail', id=id, event_id=event_id)
+
+    # Re-deliver as a fresh event so it surfaces in the inspector like any other
+    # delivery. A marker header makes replays distinguishable from live traffic.
+    headers = dict(original.headers)
+    headers['X-Webhook-Replay-Of'] = str(original.id)
+    replay = WebhookEvent.objects.create(
+        endpoint=endpoint,
+        method=original.method,
+        headers=headers,
+        body=original.body,
+        query_params=original.query_params,
+        source_ip=original.source_ip,
+    )
+    _process_event(replay)
+    messages.success(request, 'Event replayed.')
+    return redirect('webhooks:event_detail', id=id, event_id=replay.id)
