@@ -219,10 +219,22 @@ def receive_webhook(request, slug):
             from .sheets import extract_city, get_event_tag, get_mailchimp_tag
             city = extract_city(raw_name)
             if city:
-                event_date = datetime.fromisoformat(raw_start.replace('Z', '+00:00')).date()
-                tag = get_event_tag(city, event_date)
-                if tag:
-                    event.sheet_tag = tag
+                try:
+                    event_date = datetime.fromisoformat(raw_start.replace('Z', '+00:00')).date()
+                except ValueError:
+                    logger.warning(
+                        'Event tag lookup skipped for event %s: could not parse '
+                        'event_start=%r as a date', event.id, raw_start,
+                    )
+                else:
+                    tag = get_event_tag(city, event_date)
+                    if tag:
+                        event.sheet_tag = tag
+            else:
+                logger.warning(
+                    'Event tag lookup skipped for event %s: no city extracted from '
+                    'event_name=%r', event.id, raw_name,
+                )
             mc_tag = get_mailchimp_tag(raw_name)
             if mc_tag:
                 event.mailchimp_tag = mc_tag

@@ -67,10 +67,19 @@ def _get_client():
 def get_event_tag(city: str, event_date: date) -> str | None:
     client = _get_client()
     if not client:
+        logger.warning(
+            'Event tag lookup skipped: Google Sheets client unavailable '
+            '(GOOGLE_CREDENTIALS_JSON not set or invalid). city=%r date=%s',
+            city, event_date,
+        )
         return None
 
     spreadsheet_id = getattr(settings, 'GOOGLE_SPREADSHEET_ID', '')
     if not spreadsheet_id:
+        logger.warning(
+            'Event tag lookup skipped: GOOGLE_SPREADSHEET_ID not set. city=%r date=%s',
+            city, event_date,
+        )
         return None
 
     try:
@@ -78,6 +87,7 @@ def get_event_tag(city: str, event_date: date) -> str | None:
         ws = sh.get_worksheet(0)
         rows = ws.get_all_records()
 
+        location_matches = 0
         for row in rows:
             location = str(row.get('Location', '')).strip()
             date_str = str(row.get('Date', '')).strip()
@@ -85,15 +95,37 @@ def get_event_tag(city: str, event_date: date) -> str | None:
 
             if location.lower() != city.lower():
                 continue
+            location_matches += 1
 
             try:
                 row_date = datetime.strptime(date_str, '%a %b %d %Y').date()
             except ValueError:
+                logger.warning(
+                    'Event tag: row matched location %r but Date %r is not in '
+                    'the expected "%%a %%b %%d %%Y" format (e.g. "Tue Jun 30 2026")',
+                    city, date_str,
+                )
                 continue
 
             if row_date == event_date:
-                return tag or None
+                if tag:
+                    return tag
+                logger.warning(
+                    'Event tag: matched row for city=%r date=%s but its Tag cell is empty',
+                    city, event_date,
+                )
+                return None
 
+        if location_matches:
+            logger.warning(
+                'Event tag: found %d row(s) for city=%r but none with date=%s',
+                location_matches, city, event_date,
+            )
+        else:
+            logger.warning(
+                'Event tag: no rows in sheet matched Location=%r (checked %d rows)',
+                city, len(rows),
+            )
         return None
     except Exception:
         logger.warning('Google Sheets lookup failed', exc_info=True)
