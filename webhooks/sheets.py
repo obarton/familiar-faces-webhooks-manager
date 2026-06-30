@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 
 import gspread
@@ -13,6 +14,39 @@ logger = logging.getLogger(__name__)
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
 _client = None
+
+# Opt-in cache of the worksheet rows. Off by default so the live receiver always
+# reads fresh data; switched on for the duration of a bulk replay via
+# cached_sheet_rows() so the sheet is fetched once per run, not once per event.
+_row_cache = None
+_row_cache_active = False
+
+
+@contextmanager
+def cached_sheet_rows():
+    """Within this context, get_event_tag fetches the worksheet once and reuses
+    the rows for every lookup. Used by the bulk replay management command to
+    avoid a full Google Sheets fetch per event."""
+    global _row_cache, _row_cache_active
+    _row_cache_active = True
+    _row_cache = None
+    try:
+        yield
+    finally:
+        _row_cache_active = False
+        _row_cache = None
+
+
+def _load_rows(client, spreadsheet_id):
+    global _row_cache
+    if _row_cache_active and _row_cache is not None:
+        return _row_cache
+    sh = client.open_by_key(spreadsheet_id)
+    ws = sh.get_worksheet(0)
+    rows = ws.get_all_records()
+    if _row_cache_active:
+        _row_cache = rows
+    return rows
 
 CITY_TO_MAILCHIMP_TAG = {
     'san francisco': 'Familiar Faces Bay Area',
@@ -119,9 +153,7 @@ def get_event_tag(city: str, event_date: date) -> str | None:
         return None
 
     try:
-        sh = client.open_by_key(spreadsheet_id)
-        ws = sh.get_worksheet(0)
-        rows = ws.get_all_records()
+        rows = _load_rows(client, spreadsheet_id)
 
         location_matches = 0
         seen_dates = []
