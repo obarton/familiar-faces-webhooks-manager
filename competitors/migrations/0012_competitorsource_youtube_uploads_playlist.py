@@ -4,7 +4,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('competitors', '0010_landscapereport'),
+        ('competitors', '0011_landscapereport_generated_at_and_more'),
     ]
 
     operations = [
