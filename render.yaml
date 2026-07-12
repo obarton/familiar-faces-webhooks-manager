@@ -1,0 +1,77 @@
+# Render Blueprint — Marketing Ops Dashboard
+# Deploys two things from this repo, using your EXISTING database:
+#   1. web        — the Django app (gunicorn)
+#   2. cron       — the competitor-refresh worker, run on a schedule
+# Secrets are marked `sync: false`: Render will prompt for them on first deploy
+# and never store them in git. Set DATABASE_URL, FIRECRAWL_API_KEY and
+# APIFY_API_TOKEN there.
+
+# Shared environment, referenced by both the web service and the cron job so they
+# use the same keys and the same database.
+envVarGroups:
+  - name: marketing-ops-env
+    envVars:
+      # Your existing database. Paste its connection string when prompted.
+      # If the DB is on Render, use its *Internal* Database URL (no egress, faster);
+      # if external, use the full URL including `?sslmode=require`.
+      - key: DATABASE_URL
+        sync: false
+      - key: DEBUG
+        value: "False"
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      # --- Competitor tracker providers ---
+      - key: FIRECRAWL_API_KEY          # YouTube scraping
+        sync: false
+      - key: APIFY_API_TOKEN            # Instagram / TikTok scraping
+        sync: false
+      - key: APIFY_INSTAGRAM_ACTOR
+        value: apify/instagram-scraper
+      - key: APIFY_TIKTOK_ACTOR
+        value: clockworks/tiktok-scraper
+      - key: COMPETITOR_BACKFILL_LIMIT
+        value: "200"
+      # --- Existing webhook integrations (set if you use them) ---
+      - key: GOOGLE_CREDENTIALS_JSON
+        sync: false
+      - key: GOOGLE_SPREADSHEET_ID
+        sync: false
+      - key: MAILCHIMP_API_KEY
+        sync: false
+      - key: MAILCHIMP_AUDIENCE_ID
+        sync: false
+
+services:
+  # 1. Web app -------------------------------------------------------------
+  - type: web
+    name: marketing-ops-web
+    runtime: python
+    plan: starter            # use `free` to trial (spins down when idle)
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --no-input"
+    # preDeployCommand runs once per deploy, before traffic shifts — the right
+    # place for migrations. If you're on a plan without preDeploy, move
+    # `python manage.py migrate` into buildCommand instead.
+    preDeployCommand: "python manage.py migrate"
+    startCommand: "gunicorn config.wsgi:application"
+    healthCheckPath: /login/
+    envVars:
+      - fromGroup: marketing-ops-env    # includes DATABASE_URL
+      - key: SECRET_KEY
+        generateValue: true
+
+  # 2. Background refresh worker (as a scheduled cron job) -----------------
+  # Runs the one-shot command every 15 minutes: it crawls any competitor that
+  # was queued from the UI or has gone stale, then exits. Cheaper than an
+  # always-on worker. (For an always-on worker instead, change `type: cron` +
+  # `schedule` to `type: worker` and use `--loop 900` in the start command.)
+  - type: cron
+    name: marketing-ops-refresh
+    runtime: python
+    plan: starter
+    schedule: "*/15 * * * *"
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python manage.py refresh_competitors"
+    envVars:
+      - fromGroup: marketing-ops-env    # includes DATABASE_URL
+      - key: SECRET_KEY
+        generateValue: true
