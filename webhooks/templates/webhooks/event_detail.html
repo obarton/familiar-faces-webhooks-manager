@@ -1,6 +1,6 @@
 {% extends "webhooks/base.html" %}
 
-{% block title %}Event — {{ endpoint.name }} — Webhook Inspector{% endblock %}
+{% block title %}Event — {{ endpoint.name }} — Marketing Ops Dashboard{% endblock %}
 
 {% block content %}
 <nav aria-label="breadcrumb" class="mb-4">
@@ -16,7 +16,7 @@
     <h1>Event Detail</h1>
     <span class="method-badge method-{{ event.method|lower }}">{{ event.method }}</span>
     {% if event.is_replay %}
-      <span style="font-size:0.7rem; color:#fbbf24; background:#3f2d00; padding:2px 8px; border-radius:4px; border:1px solid #92750a;" title="Replay of {{ event.replay_of }}">REPLAY</span>
+      <span style="font-size:0.7rem; color:var(--warn-fg); background:var(--warn-bg); padding:2px 8px; border-radius:4px; border:1px solid var(--warn-bd);" title="Replay of {{ event.replay_of }}">REPLAY</span>
     {% endif %}
   </div>
   <div class="d-flex align-items-center gap-2">
@@ -39,14 +39,14 @@
       <div class="text-muted" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em;">Time</div>
       <div style="font-family:'JetBrains Mono',monospace; font-size:0.875rem; margin-top:4px;">
         {{ event.created_at|date:"H:i:s" }}<br>
-        <span style="font-size:0.75rem; color:#64748b;">{{ event.created_at|date:"M j, Y" }}</span>
+        <span style="font-size:0.75rem; color:var(--text-subtle);">{{ event.created_at|date:"M j, Y" }}</span>
       </div>
     </div>
   </div>
   <div class="col-sm-6 col-md-3">
     <div class="card p-3">
       <div class="text-muted" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em;">Source IP</div>
-      <code style="font-size:0.875rem; color:#a78bfa; margin-top:4px; display:block;">
+      <code style="font-size:0.875rem; color:var(--accent); margin-top:4px; display:block;">
         {{ event.source_ip|default:"unknown" }}
       </code>
     </div>
@@ -62,16 +62,16 @@
   <div class="col-sm-6 col-md-3">
     <div class="card p-3">
       <div class="text-muted" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em;">Content Type</div>
-      <code style="font-size:0.8rem; color:#94a3b8; margin-top:4px; display:block; word-break:break-all;">
+      <code style="font-size:0.8rem; color:var(--text-muted); margin-top:4px; display:block; word-break:break-all;">
         {{ content_type }}
       </code>
     </div>
   </div>
   {% if event.sheet_tag %}
   <div class="col-sm-6 col-md-3">
-    <div class="card p-3" style="border-color:#7c3aed;">
+    <div class="card p-3" style="border-color:var(--accent);">
       <div class="text-muted" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em;">Tag</div>
-      <code style="font-size:0.875rem; color:#a78bfa; margin-top:4px; display:block;">
+      <code style="font-size:0.875rem; color:var(--accent); margin-top:4px; display:block;">
         {{ event.sheet_tag }}
       </code>
     </div>
@@ -79,9 +79,9 @@
   {% endif %}
   {% if event.mailchimp_tag %}
   <div class="col-sm-6 col-md-3">
-    <div class="card p-3" style="border-color:#1d4ed8;">
+    <div class="card p-3" style="border-color:var(--info-fg);">
       <div class="text-muted" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em;">Mailchimp Tag</div>
-      <code style="font-size:0.875rem; color:#93c5fd; margin-top:4px; display:block;">
+      <code style="font-size:0.875rem; color:var(--info-fg); margin-top:4px; display:block;">
         {{ event.mailchimp_tag }}
       </code>
     </div>
@@ -96,10 +96,10 @@
       <tbody>
         {% for name, value in event.headers.items %}
         <tr>
-          <td style="width:35%; font-family:'JetBrains Mono',monospace; color:#7c3aed; font-size:0.8rem; padding-left:1.25rem;">
+          <td style="width:35%; font-family:'JetBrains Mono',monospace; color:var(--accent); font-size:0.8rem; padding-left:1.25rem;">
             {{ name }}
           </td>
-          <td style="font-family:'JetBrains Mono',monospace; color:#94a3b8; word-break:break-all;">
+          <td style="font-family:'JetBrains Mono',monospace; color:var(--text-muted); word-break:break-all;">
             {{ value }}
           </td>
         </tr>
@@ -119,10 +119,10 @@
       <tbody>
         {% for name, values in event.query_params.items %}
         <tr>
-          <td style="width:35%; font-family:'JetBrains Mono',monospace; color:#7c3aed; font-size:0.8rem; padding-left:1.25rem;">
+          <td style="width:35%; font-family:'JetBrains Mono',monospace; color:var(--accent); font-size:0.8rem; padding-left:1.25rem;">
             {{ name }}
           </td>
-          <td style="font-family:'JetBrains Mono',monospace; color:#94a3b8;">
+          <td style="font-family:'JetBrains Mono',monospace; color:var(--text-muted);">
             {% for v in values %}{{ v }}{% if not forloop.last %}, {% endif %}{% endfor %}
           </td>
         </tr>
@@ -137,7 +137,7 @@
   <div class="card-header d-flex align-items-center justify-content-between">
     <span>Body</span>
     {% if event.is_json %}
-      <span style="font-size:0.7rem; color:#4ade80; background:#052e16; padding:2px 8px; border-radius:4px; border:1px solid #166534;">JSON</span>
+      <span style="font-size:0.7rem; color:var(--ok-fg); background:var(--ok-bg); padding:2px 8px; border-radius:4px; border:1px solid var(--ok-bd);">JSON</span>
     {% endif %}
   </div>
   <div class="card-body p-3">

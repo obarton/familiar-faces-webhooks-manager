@@ -1,0 +1,217 @@
+{% extends "webhooks/base.html" %}
+
+{% block title %}Competitors — Content Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1><i class="bi bi-binoculars" style="color:var(--accent);"></i> Competitor Content Tracker</h1>
+    <div class="text-muted" style="font-size:0.82rem; margin-top:4px;">
+      {% if last_refreshed %}Last refreshed {{ last_refreshed|date:"n/j/Y, g:i:s A" }} · {% endif %}
+      {{ total_items }} item{{ total_items|pluralize }} across {{ competitor_count }} competitor{{ competitor_count|pluralize }}
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    {% if sources %}
+    <form method="post" action="{% url 'competitors:refresh_all' %}" class="m-0">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-clockwise"></i> Refresh all
+      </button>
+    </form>
+    {% endif %}
+    <a href="{% url 'competitors:source_create' %}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg"></i> Add competitor
+    </a>
+  </div>
+</div>
+
+{% if not firecrawl_configured %}
+<div class="alert alert-warning mb-3" role="alert" style="font-size:0.85rem;">
+  <i class="bi bi-exclamation-triangle"></i>
+  Firecrawl is not configured. Set <code>FIRECRAWL_API_KEY</code> to pull YouTube channels.
+</div>
+{% endif %}
+{% if not apify_configured %}
+<div class="alert alert-info mb-3" role="alert" style="font-size:0.85rem;">
+  <i class="bi bi-info-circle"></i>
+  Set <code>APIFY_API_TOKEN</code> to track Instagram &amp; TikTok. Without it those channels are skipped.
+</div>
+{% endif %}
+
+{% if sources %}
+<!-- Tracked competitors (management) -->
+<div class="card mb-4">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Competitor</th>
+          <th>Items</th>
+          <th>Last refreshed</th>
+          <th>Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in sources %}
+        <tr>
+          <td>
+            <a href="?source={{ s.id }}" class="fw-semibold text-decoration-none" style="color:var(--text);">
+              {{ s.name }}
+            </a>
+            <div class="d-flex flex-wrap gap-2" style="margin-top:4px;">
+              {% for ch in s.channels %}
+                <a href="{{ ch.url }}" target="_blank" rel="noopener"
+                   class="text-decoration-none" style="color:var(--text-subtle); font-size:0.72rem;" title="{{ ch.url }}">
+                  <i class="bi {{ ch.icon }}"></i> {{ ch.label }}
+                </a>
+              {% endfor %}
+            </div>
+          </td>
+          <td><span style="font-family:'JetBrains Mono',monospace; font-size:0.875rem;">{{ s.item_count }}</span></td>
+          <td>
+            {% if s.is_queued %}
+              <span class="badge rounded-pill" style="background:var(--warn-bg); color:var(--warn-fg); border:1px solid var(--warn-bd);">
+                <i class="bi bi-hourglass-split"></i> queued
+              </span>
+            {% else %}
+              <span class="text-muted" style="font-size:0.8rem;">
+                {% if s.last_crawled_at %}{{ s.last_crawled_at|date:"M j, Y g:i A" }}{% else %}—{% endif %}
+              </span>
+              {% if s.last_refresh_status %}
+                <div class="text-muted" style="font-size:0.72rem;">{{ s.last_refresh_status }}</div>
+              {% endif %}
+            {% endif %}
+            {% if s.last_refresh_note %}
+              <div style="font-size:0.7rem; color:var(--warn-fg); margin-top:2px;">
+                <i class="bi bi-exclamation-triangle"></i> {{ s.last_refresh_note }}
+              </div>
+            {% endif %}
+          </td>
+          <td>
+            {% if s.is_active %}
+              <span class="badge rounded-pill badge-active">active</span>
+            {% else %}
+              <span class="badge rounded-pill badge-inactive">paused</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <div class="d-flex gap-2 justify-content-end">
+              <form method="post" action="{% url 'competitors:source_refresh' s.id %}" class="m-0">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Refresh">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+              </form>
+              <a href="{% url 'competitors:source_delete' s.id %}" class="btn btn-sm btn-outline-secondary" title="Delete">
+                <i class="bi bi-trash3"></i>
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Filter row -->
+<form method="get" class="d-flex flex-wrap gap-2 mb-3">
+  <select name="source" class="form-select" style="max-width:220px;" onchange="this.form.submit()">
+    <option value="">All competitors</option>
+    {% for s in sources %}
+      <option value="{{ s.id }}" {% if selected_source and selected_source.id == s.id %}selected{% endif %}>{{ s.name }}</option>
+    {% endfor %}
+  </select>
+  <input type="search" name="q" value="{{ query }}" class="form-control" style="min-width:240px; flex:1;"
+         placeholder="Search hooks, captions, competitors…">
+  {% if query or selected_source %}
+    <a href="{% url 'competitors:dashboard' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+  {% endif %}
+</form>
+
+<!-- Content table -->
+{% if items %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Competitor</th>
+          <th style="width:55%;">Hook / Title</th>
+          <th>Format</th>
+          <th>Date</th>
+          <th>Link</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td style="white-space:nowrap;">
+            <span class="fw-semibold" style="color:var(--text);">{{ item.source.name }}</span>
+          </td>
+          <td>
+            <a href="{{ item.url }}" target="_blank" rel="noopener"
+               class="fw-semibold text-decoration-none" style="color:var(--text);">
+              {{ item.display_title|truncatechars:160 }}
+            </a>
+            {% if item.is_new %}<span class="badge rounded-pill badge-active ms-1">new</span>{% endif %}
+            {% with excerpt=item.summary|default:item.description %}
+              {% if excerpt %}
+                <div class="text-muted" style="font-size:0.78rem; margin-top:2px;">{{ excerpt|truncatechars:260 }}</div>
+              {% endif %}
+            {% endwith %}
+          </td>
+          <td>
+            <span style="display:inline-block; background:#FCE9EF; color:#B4326A; font-size:0.72rem;
+                         font-weight:600; padding:0.2em 0.6em; border-radius:999px; white-space:nowrap;">
+              {{ item.format_label }}
+            </span>
+          </td>
+          <td style="white-space:nowrap;">
+            <span class="text-muted" style="font-size:0.82rem;">
+              {% if item.published_date %}{{ item.published_date|date:"M j, Y" }}{% else %}—{% endif %}
+            </span>
+          </td>
+          <td>
+            <a href="{{ item.url }}" target="_blank" rel="noopener" style="font-size:0.82rem; white-space:nowrap;">
+              Open <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card">
+  <div class="card-body">
+    <div class="empty-state">
+      <i class="bi bi-file-earmark-text"></i>
+      {% if query or selected_source %}
+        <p>No content matches your filter.</p>
+        <a href="{% url 'competitors:dashboard' %}" class="btn btn-primary btn-sm">Clear filter</a>
+      {% else %}
+        <p>No content yet.<br>Use <strong>Refresh</strong> on a competitor to pull their latest content.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="card">
+  <div class="card-body">
+    <div class="empty-state">
+      <i class="bi bi-binoculars"></i>
+      <p>No competitors tracked yet.<br>Add a competitor's Instagram, TikTok, or YouTube to start tracking.</p>
+      <a href="{% url 'competitors:source_create' %}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg"></i> Add your first competitor
+      </a>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

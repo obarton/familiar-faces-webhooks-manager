@@ -1,6 +1,6 @@
 {% extends "webhooks/base.html" %}
 
-{% block title %}{{ endpoint.name }} — Webhook Inspector{% endblock %}
+{% block title %}{{ endpoint.name }} — Marketing Ops Dashboard{% endblock %}
 
 {% block content %}
 <nav aria-label="breadcrumb" class="mb-4">
@@ -83,15 +83,15 @@
               <div class="text-muted" style="font-size:0.7rem;">{{ event.created_at|date:"M j" }}</div>
             </td>
             <td>
-              <code style="font-size:0.75rem; color:#94a3b8;">{{ event.source_ip|default:"—" }}</code>
+              <code style="font-size:0.75rem; color:var(--text-muted);">{{ event.source_ip|default:"—" }}</code>
             </td>
             <td>
               <span style="font-family:'JetBrains Mono',monospace; font-size:0.8rem;">{{ event.body_size_display }}</span>
             </td>
             <td>
               {% for name, value in event.preview_headers %}
-                <div style="font-size:0.72rem; color:#64748b;">
-                  <span style="color:#7c3aed;">{{ name }}:</span> {{ value|truncatechars:40 }}
+                <div style="font-size:0.72rem; color:var(--text-subtle);">
+                  <span style="color:var(--accent);">{{ name }}:</span> {{ value|truncatechars:40 }}
                 </div>
               {% empty %}
                 <span class="text-muted" style="font-size:0.75rem;">—</span>
@@ -110,7 +110,7 @@
               <div class="empty-state">
                 <i class="bi bi-inbox"></i>
                 <p>No events yet. Send a request to the receiver URL above.</p>
-                <code style="font-size:0.8rem; color:#a78bfa; background:#16161f; padding:0.4em 0.75em; border-radius:6px;">
+                <code style="font-size:0.8rem; color:var(--accent); background:var(--surface-3); padding:0.4em 0.75em; border-radius:6px;">
                   curl -X POST {{ receiver_url }} -H "Content-Type: application/json" -d '{"hello":"world"}'
                 </code>
               </div>
@@ -160,7 +160,7 @@
 
     let headersHtml = ev.preview_headers.length
       ? ev.preview_headers.map(([n, v]) =>
-          `<div style="font-size:0.72rem;color:#64748b;"><span style="color:#7c3aed;">${escapeHtml(n)}:</span> ${escapeHtml(String(v).substring(0, 40))}</div>`
+          `<div style="font-size:0.72rem;color:var(--text-subtle);"><span style="color:var(--accent);">${escapeHtml(n)}:</span> ${escapeHtml(String(v).substring(0, 40))}</div>`
         ).join('')
       : '<span class="text-muted" style="font-size:0.75rem;">—</span>';
 
@@ -172,7 +172,7 @@
         <span style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;">${time}</span>
         <div class="text-muted" style="font-size:0.7rem;">${date}</div>
       </td>
-      <td><code style="font-size:0.75rem;color:#94a3b8;">${escapeHtml(ev.source_ip || '—')}</code></td>
+      <td><code style="font-size:0.75rem;color:var(--text-muted);">${escapeHtml(ev.source_ip || '—')}</code></td>
       <td><span style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;">${escapeHtml(ev.body_size_display)}</span></td>
       <td>${headersHtml}</td>
       <td class="text-end">
@@ -258,7 +258,4 @@ function copyUrl() {
   });
 }
 </script>
-<style>
-@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-</style>
 {% endblock %}

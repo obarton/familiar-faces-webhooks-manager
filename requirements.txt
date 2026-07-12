@@ -5,3 +5,5 @@ dj-database-url
 whitenoise
 gspread
 python-dotenv
+firecrawl-py
+apify-client

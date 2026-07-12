@@ -1,6 +1,6 @@
 {% extends "webhooks/base.html" %}
 
-{% block title %}New Endpoint — Webhook Inspector{% endblock %}
+{% block title %}New Endpoint — Marketing Ops Dashboard{% endblock %}
 
 {% block content %}
 <nav aria-label="breadcrumb" class="mb-4">
@@ -20,7 +20,7 @@
       {% csrf_token %}
 
       <div class="mb-3">
-        <label class="form-label" style="font-size:0.8125rem; color:#94a3b8;">
+        <label class="form-label" style="font-size:0.8125rem; color:var(--text-muted);">
           Name <span class="text-danger">*</span>
         </label>
         {{ form.name }}
@@ -30,7 +30,7 @@
       </div>
 
       <div class="mb-4">
-        <label class="form-label" style="font-size:0.8125rem; color:#94a3b8;">Description</label>
+        <label class="form-label" style="font-size:0.8125rem; color:var(--text-muted);">Description</label>
         {{ form.description }}
         {% if form.description.errors %}
           <div class="text-danger mt-1" style="font-size:0.8125rem;">{{ form.description.errors }}</div>
@@ -46,18 +46,4 @@
     </form>
   </div>
 </div>
-
-<style>
-  .form-control {
-    background: #0f0f17;
-    border-color: #2a2a3d;
-    color: #e2e8f0;
-  }
-  .form-control:focus {
-    background: #0f0f17;
-    border-color: #7c3aed;
-    color: #e2e8f0;
-    box-shadow: 0 0 0 3px rgba(124,58,237,0.15);
-  }
-</style>
 {% endblock %}

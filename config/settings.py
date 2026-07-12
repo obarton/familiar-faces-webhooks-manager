@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'webhooks',
+    'competitors',
 ]
 
 MIDDLEWARE = [
@@ -105,6 +106,19 @@ GOOGLE_SPREADSHEET_ID = os.environ.get('GOOGLE_SPREADSHEET_ID', '1TnOUIheEznDDl6
 
 MAILCHIMP_API_KEY = os.environ.get('MAILCHIMP_API_KEY', '')
 MAILCHIMP_AUDIENCE_ID = os.environ.get('MAILCHIMP_AUDIENCE_ID', '')
+
+# Firecrawl (competitor content tracker). Unset = feature degrades gracefully.
+FIRECRAWL_API_KEY = os.environ.get('FIRECRAWL_API_KEY', '')
+
+# Apify (Instagram / TikTok scraping — Firecrawl can't read those platforms).
+# Unset = IG/TikTok channels are skipped with a UI hint, rest still works.
+APIFY_API_TOKEN = os.environ.get('APIFY_API_TOKEN', '')
+APIFY_INSTAGRAM_ACTOR = os.environ.get('APIFY_INSTAGRAM_ACTOR', 'apify/instagram-scraper')
+APIFY_TIKTOK_ACTOR = os.environ.get('APIFY_TIKTOK_ACTOR', 'clockworks/tiktok-scraper')
+
+# One-time deep pull the first time a competitor is refreshed; recurring
+# refreshes then use the per-competitor crawl_limit.
+COMPETITOR_BACKFILL_LIMIT = int(os.environ.get('COMPETITOR_BACKFILL_LIMIT', '200'))
 
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en" data-bs-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Webhook Inspector{% endblock %}</title>
+  <title>{% block title %}Marketing Ops Dashboard{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -12,19 +12,39 @@
     :root {
       --font-mono: 'JetBrains Mono', monospace;
       --font-sans: 'Inter', system-ui, sans-serif;
-      --accent: #7c3aed;
-      --accent-dim: #4c1d95;
-      --surface: #0f0f17;
-      --surface-2: #16161f;
-      --surface-3: #1e1e2e;
-      --border: #2a2a3d;
-      --text-muted: #6b7280;
+
+      /* Neutrals — cool near-white, tool-grade */
+      --surface: #FBFBFD;    /* app background */
+      --surface-2: #FFFFFF;  /* cards, navbar */
+      --surface-3: #F4F5F7;  /* insets, code blocks, table hover */
+      --border: #E6E8EC;     /* hairline */
+
+      /* Text hierarchy */
+      --heading: #12141A;
+      --text: #2B2F38;
+      --text-muted: #5B6472;
+      --text-subtle: #79818F;
+
+      /* Brand violet, tuned for light, used sparingly */
+      --accent: #6D28D9;
+      --accent-hover: #5B21B6;
+      --accent-strong: #5B21B6;
+      --accent-soft: #F3F0FF;
+
+      /* Semantic tints (bg / foreground / border) */
+      --ok-bg: #E7F6EC;      --ok-fg: #15803D;     --ok-bd: #B6E6C6;
+      --danger-bg: #FDECEC;  --danger-fg: #B42318; --danger-bd: #F5C4C0;
+      --warn-bg: #FEF4E3;    --warn-fg: #B45309;   --warn-bd: #F5DCA6;
+      --info-bg: #E8F1FE;    --info-fg: #1D4ED8;   --info-bd: #C4DAFB;
+      --neutral-bg: #F1F3F5; --neutral-fg: #4B5563; --neutral-bd: #E2E5EA;
+
+      --focus-ring: rgba(109, 40, 217, 0.16);
     }
 
     body {
       font-family: var(--font-sans);
       background: var(--surface);
-      color: #e2e8f0;
+      color: var(--text);
       min-height: 100vh;
     }
 
@@ -38,12 +58,23 @@
       font-family: var(--font-mono);
       font-weight: 700;
       font-size: 1rem;
-      color: #a78bfa !important;
+      color: var(--accent) !important;
       letter-spacing: -0.02em;
     }
 
     .navbar-brand .brand-dot {
       color: var(--accent);
+    }
+
+    .nav-link-top {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 0.2rem 0.1rem;
+      transition: color 0.15s ease;
+    }
+    .nav-link-top:hover {
+      color: var(--heading);
     }
 
     .main-container {
@@ -62,7 +93,7 @@
     .page-header h1 {
       font-size: 1.375rem;
       font-weight: 600;
-      color: #f1f5f9;
+      color: var(--heading);
       margin: 0;
     }
 
@@ -70,6 +101,7 @@
       background: var(--surface-2);
       border: 1px solid var(--border);
       border-radius: 10px;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
     }
 
     .card-header {
@@ -84,7 +116,7 @@
     }
 
     .table {
-      color: #cbd5e1;
+      color: var(--text);
       margin: 0;
     }
 
@@ -116,12 +148,12 @@
       letter-spacing: 0.04em;
     }
 
-    .method-post   { background: #1d4ed8; color: #bfdbfe; }
-    .method-get    { background: #166534; color: #bbf7d0; }
-    .method-put    { background: #92400e; color: #fde68a; }
-    .method-patch  { background: #5b21b6; color: #ddd6fe; }
-    .method-delete { background: #991b1b; color: #fecaca; }
-    .method-other  { background: #374151; color: #d1d5db; }
+    .method-post   { background: var(--info-bg);    color: var(--info-fg); }
+    .method-get    { background: var(--ok-bg);      color: var(--ok-fg); }
+    .method-put    { background: var(--warn-bg);    color: var(--warn-fg); }
+    .method-patch  { background: var(--accent-soft); color: var(--accent); }
+    .method-delete { background: var(--danger-bg);  color: var(--danger-fg); }
+    .method-other  { background: var(--neutral-bg); color: var(--neutral-fg); }
 
     .url-box {
       display: flex;
@@ -136,7 +168,7 @@
     .url-box code {
       font-family: var(--font-mono);
       font-size: 0.8125rem;
-      color: #a78bfa;
+      color: var(--accent-strong);
       flex: 1;
       word-break: break-all;
     }
@@ -153,8 +185,8 @@
       transition: color 0.15s, border-color 0.15s;
     }
 
-    .btn-copy:hover { color: #a78bfa; border-color: #a78bfa; }
-    .btn-copy.copied { color: #4ade80; border-color: #4ade80; }
+    .btn-copy:hover { color: var(--accent); border-color: var(--accent); }
+    .btn-copy.copied { color: var(--ok-fg); border-color: var(--ok-fg); }
 
     .empty-state {
       text-align: center;
@@ -162,7 +194,7 @@
       color: var(--text-muted);
     }
 
-    .empty-state i {
+    .empty-state > i {
       font-size: 2.5rem;
       margin-bottom: 0.75rem;
       display: block;
@@ -177,23 +209,23 @@
     .alert {
       border-radius: 8px;
       font-size: 0.875rem;
-      border: none;
+      border: 1px solid transparent;
     }
 
-    .alert-success { background: #052e16; color: #4ade80; }
-    .alert-danger  { background: #450a0a; color: #fca5a5; }
-    .alert-warning { background: #431407; color: #fb923c; }
-    .alert-info    { background: #0c1a2e; color: #7dd3fc; }
+    .alert-success { background: var(--ok-bg);     color: var(--ok-fg);     border-color: var(--ok-bd); }
+    .alert-danger  { background: var(--danger-bg); color: var(--danger-fg); border-color: var(--danger-bd); }
+    .alert-warning { background: var(--warn-bg);   color: var(--warn-fg);   border-color: var(--warn-bd); }
+    .alert-info    { background: var(--info-bg);   color: var(--info-fg);   border-color: var(--info-bd); }
 
     .breadcrumb {
       font-size: 0.8125rem;
       color: var(--text-muted);
     }
 
-    .breadcrumb-item a { color: #a78bfa; text-decoration: none; }
-    .breadcrumb-item a:hover { color: #c4b5fd; }
-    .breadcrumb-item.active { color: #94a3b8; }
-    .breadcrumb-item + .breadcrumb-item::before { color: var(--border); }
+    .breadcrumb-item a { color: var(--accent); text-decoration: none; }
+    .breadcrumb-item a:hover { color: var(--accent-hover); }
+    .breadcrumb-item.active { color: var(--text-muted); }
+    .breadcrumb-item + .breadcrumb-item::before { color: var(--text-subtle); }
 
     pre.code-block {
       background: var(--surface-3);
@@ -202,17 +234,32 @@
       padding: 1rem;
       font-family: var(--font-mono);
       font-size: 0.8125rem;
-      color: #e2e8f0;
+      color: var(--text);
       white-space: pre-wrap;
       word-break: break-all;
       max-height: 480px;
       overflow-y: auto;
     }
 
+    /* Forms — global light styling (replaces per-template overrides) */
+    .form-control, .form-select {
+      background: var(--surface-2);
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .form-control::placeholder { color: var(--text-subtle); }
+    .form-control:focus, .form-select:focus {
+      background: var(--surface-2);
+      border-color: var(--accent);
+      color: var(--text);
+      box-shadow: 0 0 0 3px var(--focus-ring);
+    }
+    .form-label { color: var(--text-muted); }
+
     .pulse-dot {
       width: 8px; height: 8px;
       border-radius: 50%;
-      background: #4ade80;
+      background: var(--ok-fg);
       display: inline-block;
       animation: pulse 2s ease-in-out infinite;
     }
@@ -222,28 +269,52 @@
       50% { opacity: 0.3; }
     }
 
-    a { color: #a78bfa; }
-    a:hover { color: #c4b5fd; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .pulse-dot, [style*="fadeIn"] { animation: none !important; }
+    }
+
+    a { color: var(--accent); }
+    a:hover { color: var(--accent-hover); }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
 
     .btn-primary {
       background: var(--accent);
       border-color: var(--accent);
     }
     .btn-primary:hover {
-      background: var(--accent-dim);
-      border-color: var(--accent-dim);
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
     }
 
-    .badge-active   { background: #052e16; color: #4ade80; border: 1px solid #166534; font-size: 0.7rem; }
-    .badge-inactive { background: #1c1917; color: #78716c; border: 1px solid #44403c; font-size: 0.7rem; }
+    .badge-active   { background: var(--ok-bg);      color: var(--ok-fg);      border: 1px solid var(--ok-bd); font-size: 0.7rem; }
+    .badge-inactive { background: var(--neutral-bg); color: var(--neutral-fg); border: 1px solid var(--neutral-bd); font-size: 0.7rem; }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
 <body>
   <nav class="navbar">
-    <a class="navbar-brand" href="{% url 'webhooks:endpoint_list' %}">
-      <i class="bi bi-reception-4"></i> webhook<span class="brand-dot">.</span>inspector
-    </a>
+    <div class="d-flex align-items-center gap-3">
+      <a class="navbar-brand m-0" href="{% url 'webhooks:endpoint_list' %}">
+        <i class="bi bi-graph-up-arrow"></i> Marketing Ops Dashboard
+      </a>
+      {% if user.is_authenticated %}
+      <a class="nav-link-top" href="{% url 'webhooks:endpoint_list' %}">
+        <i class="bi bi-reception-4"></i> Webhooks
+      </a>
+      <a class="nav-link-top" href="{% url 'competitors:dashboard' %}">
+        <i class="bi bi-binoculars"></i> Competitors
+      </a>
+      {% endif %}
+    </div>
     {% if user.is_authenticated %}
     <div class="d-flex align-items-center gap-3">
       <span class="text-muted" style="font-size:0.8rem">{{ user.username }}</span>
