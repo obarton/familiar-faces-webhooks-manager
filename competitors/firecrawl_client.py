@@ -11,7 +11,8 @@ returns a list of recent videos. Instagram/TikTok go through social_client (Apif
 Failures never raise — they log and yield no items for that channel.
 """
 import logging
-from datetime import date, datetime
+import re
+from datetime import date, datetime, timedelta
 
 from django.conf import settings
 from django.utils import timezone
@@ -33,7 +34,14 @@ _SOCIAL_SCHEMA = {
                     'url': {'type': 'string', 'description': 'Direct link to the post/video.'},
                     'title': {'type': 'string', 'description': 'Caption, title, or short description.'},
                     'summary': {'type': 'string', 'description': 'One-sentence summary of the content.'},
-                    'published_date': {'type': 'string', 'description': 'YYYY-MM-DD if shown, else empty.'},
+                    'published_date': {
+                        'type': 'string',
+                        'description': (
+                            'The publish time exactly as shown — an absolute date if '
+                            "present, otherwise the relative text such as '2 days ago' "
+                            "or '3 weeks ago'. Empty if none is shown."
+                        ),
+                    },
                     'keywords': {'type': 'array', 'items': {'type': 'string'}},
                 },
             },
@@ -60,8 +68,45 @@ def _get_client():
     return _client
 
 
-def _parse_date(value):
-    """Best-effort parse of a metadata/extracted date into a date, else None."""
+# Approximate days-per-unit for relative "N <unit> ago" strings. Weeks/months/
+# years are deliberately approximate (30/365) — good enough for a competitor
+# tracker where the exact day of an older upload doesn't matter.
+_RELATIVE_UNIT_DAYS = {
+    'second': 0, 'minute': 0, 'hour': 0,
+    'day': 1, 'week': 7, 'month': 30, 'year': 365,
+}
+# e.g. "2 days ago", "a week ago", "streamed 3 weeks ago", "Premiered 1 month ago".
+_RELATIVE_RE = re.compile(
+    r'(?:streamed|premiered)?\s*'
+    r'(?P<qty>\d+|a|an)\s+'
+    r'(?P<unit>second|minute|hour|day|week|month|year)s?\s+ago',
+    re.IGNORECASE,
+)
+
+
+def _parse_relative_date(text, now):
+    """Parse YouTube-style relative time ('2 days ago', 'yesterday') into a date
+    anchored at `now` (the scrape time). Returns None if not recognised."""
+    lowered = text.lower()
+    if lowered in ('today', 'just now'):
+        return now.date()
+    if lowered == 'yesterday':
+        return (now - timedelta(days=1)).date()
+    match = _RELATIVE_RE.search(lowered)
+    if not match:
+        return None
+    qty_raw = match.group('qty')
+    qty = 1 if qty_raw in ('a', 'an') else int(qty_raw)
+    days = _RELATIVE_UNIT_DAYS[match.group('unit')] * qty
+    return (now - timedelta(days=days)).date()
+
+
+def _parse_date(value, now=None):
+    """Best-effort parse of a metadata/extracted date into a date, else None.
+
+    Handles ISO 8601 and common absolute formats, then falls back to relative
+    text like '2 days ago' (what YouTube channel grids actually show), anchored
+    at `now` (defaults to the current time)."""
     if not value:
         return None
     if isinstance(value, date) and not isinstance(value, datetime):
@@ -81,7 +126,7 @@ def _parse_date(value):
             return datetime.strptime(text, fmt).date()
         except ValueError:
             continue
-    return None
+    return _parse_relative_date(text, now or timezone.now())
 
 
 def _clean_keywords(raw):
@@ -113,8 +158,9 @@ def _scrape_social(url, platform, label):
     prompt = (
         f'This is a competitor\'s {label} profile or channel page. Extract the most '
         f'recent posts or videos shown, each with a direct URL, its caption/title, a '
-        f'one-sentence summary, the publish date (YYYY-MM-DD) if visible, and 3-6 topic '
-        f'keywords. Return an empty list if none are visible.'
+        f'one-sentence summary, the publish time exactly as shown (an absolute date if '
+        f"present, otherwise relative text like '2 days ago' or '3 weeks ago'), and 3-6 "
+        f'topic keywords. Return an empty list if none are visible.'
     )
     try:
         from firecrawl.v2.types import JsonFormat
@@ -126,6 +172,8 @@ def _scrape_social(url, platform, label):
         )
         extracted = getattr(doc, 'json', None) or {}
         raw_items = extracted.get('items') or []
+        # Anchor every relative date ("2 days ago") in this batch to one scrape time.
+        now = timezone.now()
         items, seen = [], set()
         skipped_no_url = 0
         for raw in raw_items:
@@ -146,7 +194,7 @@ def _scrape_social(url, platform, label):
                 'description': '',
                 'summary': str(raw.get('summary', '') or '').strip(),
                 'keywords': _clean_keywords(raw.get('keywords')),
-                'published_date': _parse_date(raw.get('published_date')),
+                'published_date': _parse_date(raw.get('published_date'), now),
             })
         if skipped_no_url:
             logger.info(
@@ -166,13 +214,14 @@ def crawl_source(source, limit=None):
     """Collect content across all of a source's configured channels.
 
     `limit` caps items fetched per channel; defaults to the source's crawl_limit.
-    YouTube uses Firecrawl; Instagram + TikTok use the Apify provider (Firecrawl
-    can't read them). Returns (items, unsupported, needs_provider):
+    YouTube uses the Data API when YOUTUBE_API_KEY is set, else Firecrawl scraping;
+    Instagram + TikTok use the Apify provider (Firecrawl can't read them).
+    Returns (items, unsupported, needs_provider):
       unsupported    - channels the provider reports it can't scrape
       needs_provider - Instagram/TikTok channels present but Apify not configured
     Never raises.
     """
-    from . import social_client
+    from . import social_client, youtube_client
 
     if limit is None:
         limit = source.crawl_limit
@@ -198,11 +247,18 @@ def crawl_source(source, limit=None):
                 needs_provider.append(label)
             continue
 
-        # youtube via Firecrawl
+        # youtube: prefer the official Data API (exact dates + view/like counts);
+        # fall back to Firecrawl channel-page scraping when no YOUTUBE_API_KEY.
+        if youtube_client.is_configured():
+            ch_items, status = youtube_client.fetch(source, channel['url'], label, limit)
+            items.extend(ch_items)
+            if status != 'ok':
+                unsupported.append(label)
+            continue
         if not firecrawl_ok:
             logger.warning(
-                'YouTube channel skipped: Firecrawl client unavailable '
-                '(FIRECRAWL_API_KEY not set). source=%r channel=%s', source.name, label,
+                'YouTube channel skipped: neither YOUTUBE_API_KEY nor FIRECRAWL_API_KEY '
+                'is set. source=%r channel=%s', source.name, label,
             )
             continue
         ch_items, supported = _scrape_social(channel['url'], platform, label)

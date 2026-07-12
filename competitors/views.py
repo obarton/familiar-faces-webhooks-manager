@@ -9,7 +9,7 @@ from django.utils.dateparse import parse_date
 from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_POST
 
-from . import ai_client, firecrawl_client, social_client
+from . import ai_client, firecrawl_client, social_client, youtube_client
 from .forms import CompetitorSourceForm
 from .models import CompetitorContentItem, CompetitorSource, LandscapeReport
 
@@ -90,7 +90,8 @@ def dashboard(request):
         'total_items': all_items.count(),
         'competitor_count': len(sources),
         'last_refreshed': last_refreshed,
-        'firecrawl_configured': firecrawl_client.is_configured(),
+        # YouTube works with either the Data API (preferred) or Firecrawl scraping.
+        'youtube_configured': youtube_client.is_configured() or firecrawl_client.is_configured(),
         'apify_configured': social_client.is_configured(),
     })
 
