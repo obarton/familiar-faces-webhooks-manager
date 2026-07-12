@@ -294,11 +294,32 @@ def generate_landscape():
 
 
 def generate_and_store_landscape():
-    """Generate the landscape report and keep only the latest. Returns True on success."""
-    markdown = generate_landscape()
-    if not markdown:
-        return False
+    """Generate the landscape report into the singleton row, tracking status.
+
+    Runs off the request path (called by the refresh_competitors worker); slow
+    because of web search. Returns True on success. Records status/last_error on
+    the row so the UI can show progress and failures.
+    """
     from .models import LandscapeReport
-    LandscapeReport.objects.all().delete()
-    LandscapeReport.objects.create(markdown=markdown)
+
+    report = LandscapeReport.get_solo()
+    report.status = LandscapeReport.STATUS_GENERATING
+    report.save(update_fields=['status', 'updated_at'])
+
+    markdown = generate_landscape()
+
+    report.generation_requested = False
+    if not markdown:
+        report.status = LandscapeReport.STATUS_FAILED
+        report.last_error = 'Generation returned no report — check the logs (API error, refusal, or no accounts).'
+        report.save(update_fields=['status', 'last_error', 'generation_requested', 'updated_at'])
+        return False
+
+    report.markdown = markdown
+    report.status = LandscapeReport.STATUS_READY
+    report.last_error = ''
+    report.generated_at = timezone.now()
+    report.save(update_fields=[
+        'markdown', 'status', 'last_error', 'generated_at', 'generation_requested', 'updated_at',
+    ])
     return True

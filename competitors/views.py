@@ -99,7 +99,7 @@ def dashboard(request):
 def landscape(request):
     report = LandscapeReport.objects.first()
     report_html = None
-    if report:
+    if report and report.markdown:
         import markdown as md
         report_html = mark_safe(md.markdown(
             report.markdown, extensions=['tables', 'fenced_code', 'sane_lists']
@@ -115,14 +115,22 @@ def landscape(request):
 @login_required
 @require_POST
 def landscape_generate(request):
+    # Generation is slow (web search) and must not run inline — it would trip the
+    # gunicorn worker timeout. Queue it; the refresh_competitors worker generates it.
     if not ai_client.is_configured():
         messages.warning(request, 'Set ANTHROPIC_API_KEY to generate the landscape report.')
     elif not CompetitorSource.objects.exists():
         messages.info(request, 'Add some accounts first, then generate the landscape.')
-    elif ai_client.generate_and_store_landscape():
-        messages.success(request, 'Landscape report generated.')
     else:
-        messages.warning(request, 'Could not generate the landscape report — check the logs.')
+        report = LandscapeReport.get_solo()
+        report.generation_requested = True
+        report.status = LandscapeReport.STATUS_QUEUED
+        report.save(update_fields=['generation_requested', 'status', 'updated_at'])
+        messages.success(
+            request,
+            'Landscape report queued — the background worker will generate it shortly '
+            '(web search takes a few minutes). This page refreshes itself while it runs.',
+        )
     return redirect('competitors:landscape')
 
 
