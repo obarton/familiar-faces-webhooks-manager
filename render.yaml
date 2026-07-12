@@ -3,8 +3,8 @@
 #   1. web        — the Django app (gunicorn)
 #   2. cron       — the competitor-refresh worker, run on a schedule
 # Secrets are marked `sync: false`: Render will prompt for them on first deploy
-# and never store them in git. Set DATABASE_URL, FIRECRAWL_API_KEY and
-# APIFY_API_TOKEN there.
+# and never store them in git. Set DATABASE_URL, YOUTUBE_API_KEY,
+# FIRECRAWL_API_KEY and APIFY_API_TOKEN there.
 
 # Shared environment, referenced by both the web service and the cron job so they
 # use the same keys and the same database.
@@ -21,7 +21,9 @@ envVarGroups:
       - key: PYTHON_VERSION
         value: "3.11.9"
       # --- Competitor tracker providers ---
-      - key: FIRECRAWL_API_KEY          # YouTube scraping
+      - key: YOUTUBE_API_KEY            # YouTube (Data API — exact dates + stats)
+        sync: false
+      - key: FIRECRAWL_API_KEY          # YouTube fallback scraping (if no Data API key)
         sync: false
       - key: APIFY_API_TOKEN            # Instagram / TikTok scraping
         sync: false

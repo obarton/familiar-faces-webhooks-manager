@@ -107,6 +107,11 @@ GOOGLE_SPREADSHEET_ID = os.environ.get('GOOGLE_SPREADSHEET_ID', '1TnOUIheEznDDl6
 MAILCHIMP_API_KEY = os.environ.get('MAILCHIMP_API_KEY', '')
 MAILCHIMP_AUDIENCE_ID = os.environ.get('MAILCHIMP_AUDIENCE_ID', '')
 
+# YouTube Data API v3 (competitor content tracker). Preferred over Firecrawl for
+# YouTube: returns exact publish timestamps + view/like counts. Unset = YouTube
+# falls back to Firecrawl channel-page scraping.
+YOUTUBE_API_KEY = os.environ.get('YOUTUBE_API_KEY', '')
+
 # Firecrawl (competitor content tracker). Unset = feature degrades gracefully.
 FIRECRAWL_API_KEY = os.environ.get('FIRECRAWL_API_KEY', '')
 

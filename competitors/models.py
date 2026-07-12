@@ -48,6 +48,12 @@ class CompetitorSource(BaseModel):
     )
     last_crawled_at = models.DateTimeField(null=True, blank=True)
 
+    # Cached "uploads" playlist id for the YouTube channel, resolved once from
+    # youtube_url via the Data API so recurring refreshes skip the lookup. Safe to
+    # persist because youtube_url isn't editable after creation; if an edit path is
+    # ever added, clear this field when youtube_url changes.
+    youtube_uploads_playlist = models.CharField(max_length=64, blank=True, default='')
+
     # Background refresh: the UI queues a refresh by flagging this; the
     # refresh_competitors worker crawls flagged/stale sources and writes status.
     refresh_requested = models.BooleanField(default=True)

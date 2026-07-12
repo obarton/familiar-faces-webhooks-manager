@@ -29,10 +29,11 @@
   </div>
 </div>
 
-{% if not firecrawl_configured %}
+{% if not youtube_configured %}
 <div class="alert alert-warning mb-3" role="alert" style="font-size:0.85rem;">
   <i class="bi bi-exclamation-triangle"></i>
-  Firecrawl is not configured. Set <code>FIRECRAWL_API_KEY</code> to pull YouTube channels.
+  YouTube is not configured. Set <code>YOUTUBE_API_KEY</code> (recommended) or
+  <code>FIRECRAWL_API_KEY</code> to pull YouTube channels.
 </div>
 {% endif %}
 {% if not apify_configured %}
