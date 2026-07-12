@@ -1,17 +1,17 @@
 {% extends "webhooks/base.html" %}
 
-{% block title %}Add Competitor — Content Tracker{% endblock %}
+{% block title %}Add Account — Content Tracker{% endblock %}
 
 {% block content %}
 <nav aria-label="breadcrumb" class="mb-4">
   <ol class="breadcrumb">
     <li class="breadcrumb-item"><a href="{% url 'competitors:dashboard' %}">Competitors</a></li>
-    <li class="breadcrumb-item active">Add competitor</li>
+    <li class="breadcrumb-item active">Add account</li>
   </ol>
 </nav>
 
 <div class="page-header">
-  <h1>Add Competitor</h1>
+  <h1>Add Account</h1>
 </div>
 
 <div class="card" style="max-width: 540px;">
@@ -27,6 +27,14 @@
         {% if form.name.errors %}
           <div class="text-danger mt-1" style="font-size:0.8125rem;">{{ form.name.errors }}</div>
         {% endif %}
+      </div>
+
+      <div class="form-check mb-3">
+        {{ form.is_own_brand }}
+        <label class="form-check-label" for="{{ form.is_own_brand.id_for_label }}" style="font-size:0.85rem; color:var(--text);">
+          This is one of my own brand accounts
+        </label>
+        <div class="text-muted" style="font-size:0.75rem;">Tracked and analyzed alongside competitors.</div>
       </div>
 
       <div class="text-muted mb-3" style="font-size:0.78rem;">
@@ -81,7 +89,7 @@
 
       <div class="d-flex gap-2">
         <button type="submit" class="btn btn-primary btn-sm">
-          <i class="bi bi-plus-lg"></i> Add competitor
+          <i class="bi bi-plus-lg"></i> Add account
         </button>
         <a href="{% url 'competitors:dashboard' %}" class="btn btn-sm btn-outline-secondary">Cancel</a>
       </div>

@@ -8,13 +8,14 @@ URL_FIELDS = ['instagram_url', 'tiktok_url', 'youtube_url']
 class CompetitorSourceForm(forms.ModelForm):
     class Meta:
         model = CompetitorSource
-        fields = ['name', 'instagram_url', 'tiktok_url', 'youtube_url', 'crawl_limit']
+        fields = ['name', 'is_own_brand', 'instagram_url', 'tiktok_url', 'youtube_url', 'crawl_limit']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'form-control',
                 'autofocus': True,
                 'placeholder': 'e.g. Acme Events',
             }),
+            'is_own_brand': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'instagram_url': forms.URLInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'https://instagram.com/competitor',

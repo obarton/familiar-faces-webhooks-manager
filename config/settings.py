@@ -120,6 +120,22 @@ APIFY_TIKTOK_ACTOR = os.environ.get('APIFY_TIKTOK_ACTOR', 'clockworks/tiktok-scr
 # refreshes then use the per-competitor crawl_limit.
 COMPETITOR_BACKFILL_LIMIT = int(os.environ.get('COMPETITOR_BACKFILL_LIMIT', '200'))
 
+# Anthropic / Claude — AI competitor summaries. Unset = the summary section
+# shows a hint instead of generating.
+ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
+COMPETITOR_AI_MODEL = os.environ.get('COMPETITOR_AI_MODEL', 'claude-opus-4-8')
+
+# Your brand, used to relate competitors back to you in AI summaries.
+BRAND_NAME = os.environ.get('BRAND_NAME', 'Familiar Faces')
+# Optional owner name — personalizes the landscape report's TL;DR ("TL;DR for X").
+BRAND_OWNER = os.environ.get('BRAND_OWNER', '')
+BRAND_DESCRIPTION = os.environ.get(
+    'BRAND_DESCRIPTION',
+    'Familiar Faces is a live-events and nightlife brand that produces recurring '
+    'social events and parties across multiple U.S. cities (LA, Bay Area, NYC, and '
+    'more), building community around music, culture, and in-person gatherings.',
+)
+
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/login/'
