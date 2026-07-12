@@ -124,9 +124,19 @@
       <option value="{{ s.id }}" {% if selected_source and selected_source.id == s.id %}selected{% endif %}>{{ s.name }}</option>
     {% endfor %}
   </select>
+  <select name="format" class="form-select" style="max-width:200px;" onchange="this.form.submit()">
+    <option value="">All formats</option>
+    {% for key, label in format_options %}
+      <option value="{{ key }}" {% if active_format == key %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <input type="date" name="date_from" value="{{ date_from }}" class="form-control"
+         style="max-width:170px;" onchange="this.form.submit()" title="Published from">
+  <input type="date" name="date_to" value="{{ date_to }}" class="form-control"
+         style="max-width:170px;" onchange="this.form.submit()" title="Published to">
   <input type="search" name="q" value="{{ query }}" class="form-control" style="min-width:240px; flex:1;"
          placeholder="Search hooks, captions, competitors…">
-  {% if query or selected_source %}
+  {% if has_filters %}
     <a href="{% url 'competitors:dashboard' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
   {% endif %}
 </form>
@@ -190,7 +200,7 @@
   <div class="card-body">
     <div class="empty-state">
       <i class="bi bi-file-earmark-text"></i>
-      {% if query or selected_source %}
+      {% if has_filters %}
         <p>No content matches your filter.</p>
         <a href="{% url 'competitors:dashboard' %}" class="btn btn-primary btn-sm">Clear filter</a>
       {% else %}

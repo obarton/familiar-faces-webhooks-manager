@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import F, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
 from . import firecrawl_client, social_client
@@ -13,6 +14,15 @@ from .models import CompetitorContentItem, CompetitorSource
 logger = logging.getLogger(__name__)
 
 FEED_LIMIT = 100
+
+# Format badges -> (display label, DB filter). Mirrors CompetitorContentItem.format_label.
+FORMAT_FILTERS = {
+    'instagram_reel': ('Instagram Reel', Q(platform='instagram', content_type='reel')),
+    'instagram_post': ('Instagram Post', Q(platform='instagram') & ~Q(content_type='reel')),
+    'tiktok_video':   ('TikTok Video',   Q(platform='tiktok')),
+    'youtube_video':  ('YouTube Video',  Q(platform='youtube')),
+    'article':        ('Article',        Q(platform='website')),
+}
 
 
 @login_required
@@ -34,6 +44,21 @@ def dashboard(request):
         if selected_source:
             items = items.filter(source=selected_source)
 
+    active_format = request.GET.get('format') or ''
+    if active_format in FORMAT_FILTERS:
+        items = items.filter(FORMAT_FILTERS[active_format][1])
+    else:
+        active_format = ''  # ignore unknown values
+
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+    parsed_from = parse_date(date_from) if date_from else None
+    parsed_to = parse_date(date_to) if date_to else None
+    if parsed_from:
+        items = items.filter(published_date__gte=parsed_from)
+    if parsed_to:
+        items = items.filter(published_date__lte=parsed_to)
+
     query = request.GET.get('q', '').strip()
     if query:
         items = items.filter(
@@ -54,6 +79,11 @@ def dashboard(request):
         'items': items,
         'selected_source': selected_source,
         'query': query,
+        'active_format': active_format,
+        'format_options': [(key, label) for key, (label, _) in FORMAT_FILTERS.items()],
+        'date_from': date_from,
+        'date_to': date_to,
+        'has_filters': bool(query or selected_source or active_format or parsed_from or parsed_to),
         'total_items': all_items.count(),
         'competitor_count': len(sources),
         'last_refreshed': last_refreshed,
