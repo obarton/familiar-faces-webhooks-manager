@@ -1,0 +1,91 @@
+{% extends "webhooks/base.html" %}
+
+{% block title %}Add Competitor — Content Tracker{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'competitors:dashboard' %}">Competitors</a></li>
+    <li class="breadcrumb-item active">Add competitor</li>
+  </ol>
+</nav>
+
+<div class="page-header">
+  <h1>Add Competitor</h1>
+</div>
+
+<div class="card" style="max-width: 540px;">
+  <div class="card-body p-4">
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="mb-3">
+        <label class="form-label" style="font-size:0.8125rem; color:var(--text-muted);">
+          Name <span class="text-danger">*</span>
+        </label>
+        {{ form.name }}
+        {% if form.name.errors %}
+          <div class="text-danger mt-1" style="font-size:0.8125rem;">{{ form.name.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="text-muted mb-3" style="font-size:0.78rem;">
+        Add at least one channel to track. Leave the rest blank.
+      </div>
+
+      {% if form.non_field_errors %}
+        <div class="text-danger mb-3" style="font-size:0.8125rem;">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="mb-3">
+        <label class="form-label" style="font-size:0.8125rem; color:var(--text-muted);">
+          <i class="bi bi-instagram"></i> Instagram URL
+        </label>
+        {{ form.instagram_url }}
+        {% if form.instagram_url.errors %}
+          <div class="text-danger mt-1" style="font-size:0.8125rem;">{{ form.instagram_url.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" style="font-size:0.8125rem; color:var(--text-muted);">
+          <i class="bi bi-tiktok"></i> TikTok URL
+        </label>
+        {{ form.tiktok_url }}
+        {% if form.tiktok_url.errors %}
+          <div class="text-danger mt-1" style="font-size:0.8125rem;">{{ form.tiktok_url.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" style="font-size:0.8125rem; color:var(--text-muted);">
+          <i class="bi bi-youtube"></i> YouTube URL
+        </label>
+        {{ form.youtube_url }}
+        {% if form.youtube_url.errors %}
+          <div class="text-danger mt-1" style="font-size:0.8125rem;">{{ form.youtube_url.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label" style="font-size:0.8125rem; color:var(--text-muted);">Items per channel (recurring)</label>
+        {{ form.crawl_limit }}
+        <div class="text-muted mt-1" style="font-size:0.75rem;">
+          How many recent items each channel pulls on every scheduled refresh (1–200).
+          The first refresh pulls deeper automatically to backfill history.
+        </div>
+        {% if form.crawl_limit.errors %}
+          <div class="text-danger mt-1" style="font-size:0.8125rem;">{{ form.crawl_limit.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="bi bi-plus-lg"></i> Add competitor
+        </button>
+        <a href="{% url 'competitors:dashboard' %}" class="btn btn-sm btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

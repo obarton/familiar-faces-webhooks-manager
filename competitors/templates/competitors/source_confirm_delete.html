@@ -1,12 +1,11 @@
 {% extends "webhooks/base.html" %}
 
-{% block title %}Delete {{ endpoint.name }} — Marketing Ops Dashboard{% endblock %}
+{% block title %}Delete {{ source.name }} — Content Tracker{% endblock %}
 
 {% block content %}
 <nav aria-label="breadcrumb" class="mb-4">
   <ol class="breadcrumb">
-    <li class="breadcrumb-item"><a href="{% url 'webhooks:endpoint_list' %}">Endpoints</a></li>
-    <li class="breadcrumb-item"><a href="{% url 'webhooks:endpoint_detail' endpoint.id %}">{{ endpoint.name }}</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'competitors:dashboard' %}">Competitors</a></li>
     <li class="breadcrumb-item active">Delete</li>
   </ol>
 </nav>
@@ -18,11 +17,11 @@
     </div>
     <div class="card-body p-4">
       <p style="color:var(--text);">
-        Delete <strong>{{ endpoint.name }}</strong>?
+        Delete <strong>{{ source.name }}</strong>?
       </p>
       <p class="text-muted" style="font-size:0.875rem;">
-        This will permanently delete the endpoint and all
-        <strong style="color:var(--danger-fg);">{{ event_count }} event{{ event_count|pluralize }}</strong>.
+        This will permanently delete the competitor and all
+        <strong style="color:var(--danger-fg);">{{ item_count }} tracked item{{ item_count|pluralize }}</strong>.
         This cannot be undone.
       </p>
 
@@ -31,7 +30,7 @@
         <button type="submit" class="btn btn-sm btn-danger">
           <i class="bi bi-trash3"></i> Delete permanently
         </button>
-        <a href="{% url 'webhooks:endpoint_detail' endpoint.id %}" class="btn btn-sm btn-outline-secondary">
+        <a href="{% url 'competitors:dashboard' %}" class="btn btn-sm btn-outline-secondary">
           Cancel
         </a>
       </form>
