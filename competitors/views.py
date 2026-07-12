@@ -1,14 +1,16 @@
 import logging
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import F, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_POST
 
-from . import firecrawl_client, social_client
+from . import ai_client, firecrawl_client, social_client
 from .forms import CompetitorSourceForm
-from .models import CompetitorContentItem, CompetitorSource
+from .models import CompetitorContentItem, CompetitorSource, LandscapeReport
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +19,8 @@ FEED_LIMIT = 100
 
 @login_required
 def dashboard(request):
-    sources = list(CompetitorSource.objects.all())
+    # Own-brand accounts first, then competitors, each alphabetical.
+    sources = list(CompetitorSource.objects.order_by('-is_own_brand', 'name'))
 
     all_items = CompetitorContentItem.objects.select_related('source')
 
@@ -63,18 +66,89 @@ def dashboard(request):
 
 
 @login_required
+def landscape(request):
+    report = LandscapeReport.objects.first()
+    report_html = None
+    if report:
+        import markdown as md
+        report_html = mark_safe(md.markdown(
+            report.markdown, extensions=['tables', 'fenced_code', 'sane_lists']
+        ))
+    return render(request, 'competitors/landscape.html', {
+        'report': report,
+        'report_html': report_html,
+        'ai_configured': ai_client.is_configured(),
+        'has_sources': CompetitorSource.objects.exists(),
+    })
+
+
+@login_required
+@require_POST
+def landscape_generate(request):
+    if not ai_client.is_configured():
+        messages.warning(request, 'Set ANTHROPIC_API_KEY to generate the landscape report.')
+    elif not CompetitorSource.objects.exists():
+        messages.info(request, 'Add some accounts first, then generate the landscape.')
+    elif ai_client.generate_and_store_landscape():
+        messages.success(request, 'Landscape report generated.')
+    else:
+        messages.warning(request, 'Could not generate the landscape report — check the logs.')
+    return redirect('competitors:landscape')
+
+
+@login_required
 def source_create(request):
     form = CompetitorSourceForm(request.POST or None)
     if form.is_valid():
         # New sources default to refresh_requested=True, so the worker picks them
         # up on its next pass.
         source = form.save()
+        kind = 'Brand account' if source.is_own_brand else 'Competitor'
         messages.success(
             request,
-            f'Competitor "{source.name}" added and queued — content will appear after the next refresh.',
+            f'{kind} "{source.name}" added and queued — content will appear after the next refresh.',
         )
         return redirect('competitors:dashboard')
     return render(request, 'competitors/source_form.html', {'form': form})
+
+
+def _recent_items(source, limit=FEED_LIMIT):
+    return list(
+        CompetitorContentItem.objects
+        .filter(source=source)
+        .order_by(F('published_date').desc(nulls_last=True), '-created_at')[:limit]
+    )
+
+
+@login_required
+def competitor_detail(request, id):
+    source = get_object_or_404(CompetitorSource, id=id)
+    items = _recent_items(source)
+
+    # Generate the AI summary on first view (cached thereafter), so the page
+    # "just has" a summary without a separate click.
+    if not source.ai_summary and ai_client.is_configured() and items:
+        ai_client.generate_and_store(source, items)
+
+    return render(request, 'competitors/competitor_detail.html', {
+        'source': source,
+        'items': items,
+        'ai_configured': ai_client.is_configured(),
+        'brand_name': settings.BRAND_NAME,
+    })
+
+
+@login_required
+@require_POST
+def competitor_summary(request, id):
+    source = get_object_or_404(CompetitorSource, id=id)
+    if not ai_client.is_configured():
+        messages.warning(request, 'Set ANTHROPIC_API_KEY to generate AI summaries.')
+    elif ai_client.generate_and_store(source, _recent_items(source)):
+        messages.success(request, 'Summary regenerated.')
+    else:
+        messages.warning(request, 'Could not generate a summary — check the logs.')
+    return redirect('competitors:competitor_detail', id=source.id)
 
 
 @login_required

@@ -12,6 +12,9 @@
     </div>
   </div>
   <div class="d-flex gap-2">
+    <a href="{% url 'competitors:landscape' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-stars"></i> AI Landscape
+    </a>
     {% if sources %}
     <form method="post" action="{% url 'competitors:refresh_all' %}" class="m-0">
       {% csrf_token %}
@@ -21,7 +24,7 @@
     </form>
     {% endif %}
     <a href="{% url 'competitors:source_create' %}" class="btn btn-primary btn-sm">
-      <i class="bi bi-plus-lg"></i> Add competitor
+      <i class="bi bi-plus-lg"></i> Add account
     </a>
   </div>
 </div>
@@ -57,9 +60,12 @@
         {% for s in sources %}
         <tr>
           <td>
-            <a href="?source={{ s.id }}" class="fw-semibold text-decoration-none" style="color:var(--text);">
+            <a href="{% url 'competitors:competitor_detail' s.id %}" class="fw-semibold text-decoration-none" style="color:var(--text);">
               {{ s.name }}
             </a>
+            {% if s.is_own_brand %}
+              <span class="badge rounded-pill ms-1" style="background:var(--accent-soft); color:var(--accent); font-weight:600;">Your brand</span>
+            {% endif %}
             <div class="d-flex flex-wrap gap-2" style="margin-top:4px;">
               {% for ch in s.channels %}
                 <a href="{{ ch.url }}" target="_blank" rel="noopener"
@@ -149,7 +155,8 @@
         {% for item in items %}
         <tr>
           <td style="white-space:nowrap;">
-            <span class="fw-semibold" style="color:var(--text);">{{ item.source.name }}</span>
+            <a href="{% url 'competitors:competitor_detail' item.source.id %}"
+               class="fw-semibold text-decoration-none" style="color:var(--text);">{{ item.source.name }}</a>
           </td>
           <td>
             <a href="{{ item.url }}" target="_blank" rel="noopener"
@@ -206,9 +213,9 @@
   <div class="card-body">
     <div class="empty-state">
       <i class="bi bi-binoculars"></i>
-      <p>No competitors tracked yet.<br>Add a competitor's Instagram, TikTok, or YouTube to start tracking.</p>
+      <p>No accounts tracked yet.<br>Add your brand or a competitor's Instagram, TikTok, or YouTube to start tracking.</p>
       <a href="{% url 'competitors:source_create' %}" class="btn btn-primary btn-sm">
-        <i class="bi bi-plus-lg"></i> Add your first competitor
+        <i class="bi bi-plus-lg"></i> Add your first account
       </a>
     </div>
   </div>
