@@ -3,6 +3,10 @@
 {% block title %}AI Landscape — Competitor Content Tracker{% endblock %}
 
 {% block content %}
+{% if report.is_working %}
+  {# Generation runs in the background worker; poll until it finishes. #}
+  <meta http-equiv="refresh" content="20">
+{% endif %}
 <nav aria-label="breadcrumb" class="mb-4">
   <ol class="breadcrumb">
     <li class="breadcrumb-item"><a href="{% url 'competitors:dashboard' %}">Competitors</a></li>
@@ -14,20 +18,40 @@
   <div>
     <h1><i class="bi bi-stars" style="color:var(--accent);"></i> AI Competitive Landscape</h1>
     <div class="text-muted" style="font-size:0.82rem; margin-top:4px;">
-      {% if report %}Last refreshed {{ report.created_at|date:"F j, Y, g:i A" }}
+      {% if report.generated_at %}Last generated {{ report.generated_at|date:"F j, Y, g:i A" }}
       {% else %}A single AI report across all your tracked accounts, grounded in web search.{% endif %}
     </div>
   </div>
   {% if ai_configured and has_sources %}
-  <form method="post" action="{% url 'competitors:landscape_generate' %}" class="m-0"
-        onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').innerHTML='<span class=&quot;spinner-border spinner-border-sm&quot;></span> Generating…';">
+  <form method="post" action="{% url 'competitors:landscape_generate' %}" class="m-0">
     {% csrf_token %}
-    <button type="submit" class="btn btn-primary btn-sm">
-      <i class="bi bi-arrow-clockwise"></i> {% if report %}Regenerate{% else %}Generate report{% endif %}
+    <button type="submit" class="btn btn-primary btn-sm" {% if report.is_working %}disabled{% endif %}>
+      {% if report.is_working %}
+        <span class="spinner-border spinner-border-sm"></span> Working…
+      {% else %}
+        <i class="bi bi-arrow-clockwise"></i> {% if report.has_report %}Regenerate{% else %}Generate report{% endif %}
+      {% endif %}
     </button>
   </form>
   {% endif %}
 </div>
+
+{% if report.is_working %}
+<div class="alert alert-info d-flex align-items-center" role="status">
+  <span class="spinner-border spinner-border-sm me-2"></span>
+  <div>
+    {% if report.status == 'queued' %}Report queued — the background worker will start it shortly.
+    {% else %}Generating the report with live web search — this takes a few minutes.{% endif %}
+    This page refreshes itself automatically.
+  </div>
+</div>
+{% elif report.status == 'failed' %}
+<div class="alert alert-warning" role="alert">
+  <i class="bi bi-exclamation-triangle"></i>
+  Last generation failed{% if report.last_error %}: {{ report.last_error }}{% endif %}
+  Try again, or check the worker logs.
+</div>
+{% endif %}
 
 {% if report_html %}
 <div class="card">

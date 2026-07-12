@@ -101,14 +101,50 @@ class CompetitorSource(BaseModel):
 
 class LandscapeReport(BaseModel):
     """The latest AI-generated competitive-landscape report (markdown) across all
-    tracked accounts. Only the most recent is kept."""
-    markdown = models.TextField()
+    tracked accounts, plus its background-generation state.
+
+    Generation is slow (web search runs a multi-step server-side loop that can take
+    minutes), so it can't run inside a web request without tripping the gunicorn
+    worker timeout. Instead the UI flags `generation_requested` and the
+    refresh_competitors worker picks it up and fills in the report — the same
+    queue pattern CompetitorSource.refresh_requested uses for crawls.
+
+    Treated as a singleton (see `get_solo`): a single row holds both the current
+    report and its status.
+    """
+    STATUS_IDLE = 'idle'
+    STATUS_QUEUED = 'queued'
+    STATUS_GENERATING = 'generating'
+    STATUS_READY = 'ready'
+    STATUS_FAILED = 'failed'
+
+    markdown = models.TextField(blank=True, default='')
+
+    # Background generation queue/status, mirroring CompetitorSource.refresh_requested.
+    generation_requested = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, default=STATUS_IDLE)
+    last_error = models.TextField(blank=True, default='')
+    generated_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']
 
     def __str__(self):
         return f'Landscape report {self.created_at:%Y-%m-%d %H:%M}'
+
+    @classmethod
+    def get_solo(cls):
+        """The one landscape-report row, creating an empty one if none exists."""
+        return cls.objects.first() or cls.objects.create()
+
+    @property
+    def has_report(self):
+        return bool(self.markdown)
+
+    @property
+    def is_working(self):
+        """True while a generation is queued or running (UI polls until done)."""
+        return self.status in (self.STATUS_QUEUED, self.STATUS_GENERATING)
 
 
 class CompetitorContentItem(BaseModel):
