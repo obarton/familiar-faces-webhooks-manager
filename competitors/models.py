@@ -28,8 +28,14 @@ PLATFORM_META = {
 
 
 class CompetitorSource(BaseModel):
-    """A competitor and the channels (website + socials) we track for content."""
+    """A tracked account and its channels (socials). Either a competitor or, when
+    is_own_brand is set, one of our own brand accounts — both crawled the same way
+    and shown side by side."""
     name = models.CharField(max_length=200)
+    is_own_brand = models.BooleanField(
+        default=False,
+        help_text='Track this as one of your own brand accounts (analyzed alongside competitors).',
+    )
     instagram_url = models.URLField(max_length=500, blank=True, default='')
     tiktok_url = models.URLField(max_length=500, blank=True, default='')
     youtube_url = models.URLField(max_length=500, blank=True, default='')
@@ -48,6 +54,10 @@ class CompetitorSource(BaseModel):
     # First refresh of a new competitor pulls a deeper backfill, then recurring
     # refreshes use the smaller crawl_limit. Cleared after the first crawl.
     backfill_requested = models.BooleanField(default=True)
+
+    # AI competitor analysis (Claude), generated on demand and cached here.
+    ai_summary = models.TextField(blank=True, default='')
+    ai_summary_generated_at = models.DateTimeField(null=True, blank=True)
     last_refresh_status = models.CharField(max_length=200, blank=True, default='')
     last_refresh_note = models.TextField(blank=True, default='')
 
@@ -64,6 +74,10 @@ class CompetitorSource(BaseModel):
     @property
     def item_count(self):
         return self.items.count()
+
+    @property
+    def role_label(self):
+        return 'Your brand' if self.is_own_brand else 'Competitor'
 
     @property
     def channels(self):
@@ -83,6 +97,18 @@ class CompetitorSource(BaseModel):
                     'icon': meta['icon'],
                 })
         return out
+
+
+class LandscapeReport(BaseModel):
+    """The latest AI-generated competitive-landscape report (markdown) across all
+    tracked accounts. Only the most recent is kept."""
+    markdown = models.TextField()
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Landscape report {self.created_at:%Y-%m-%d %H:%M}'
 
 
 class CompetitorContentItem(BaseModel):

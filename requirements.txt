@@ -7,3 +7,5 @@ gspread
 python-dotenv
 firecrawl-py
 apify-client
+anthropic
+markdown
