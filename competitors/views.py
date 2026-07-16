@@ -96,20 +96,39 @@ def dashboard(request):
     })
 
 
+def _render_report_html(markdown_text):
+    """Render a landscape report's markdown to safe HTML for display."""
+    if not markdown_text:
+        return None
+    import markdown as md
+    return mark_safe(md.markdown(
+        markdown_text, extensions=['tables', 'fenced_code', 'sane_lists']
+    ))
+
+
 @login_required
 def landscape(request):
-    report = LandscapeReport.objects.first()
-    report_html = None
-    if report and report.markdown:
-        import markdown as md
-        report_html = mark_safe(md.markdown(
-            report.markdown, extensions=['tables', 'fenced_code', 'sane_lists']
-        ))
+    report = LandscapeReport.latest_ready()
+    run = LandscapeReport.active_run()
+    history = LandscapeReport.history()
+    if report:
+        history = history.exclude(pk=report.pk)
     return render(request, 'competitors/landscape.html', {
         'report': report,
-        'report_html': report_html,
+        'run': run,
+        'report_html': _render_report_html(report.markdown if report else None),
+        'history': list(history),
         'ai_configured': ai_client.is_configured(),
         'has_sources': CompetitorSource.objects.exists(),
+    })
+
+
+@login_required
+def landscape_detail(request, id):
+    report = get_object_or_404(LandscapeReport.history(), id=id)
+    return render(request, 'competitors/landscape_detail.html', {
+        'report': report,
+        'report_html': _render_report_html(report.markdown),
     })
 
 
@@ -123,10 +142,7 @@ def landscape_generate(request):
     elif not CompetitorSource.objects.exists():
         messages.info(request, 'Add some accounts first, then generate the landscape.')
     else:
-        report = LandscapeReport.get_solo()
-        report.generation_requested = True
-        report.status = LandscapeReport.STATUS_QUEUED
-        report.save(update_fields=['generation_requested', 'status', 'updated_at'])
+        LandscapeReport.queue(trigger=LandscapeReport.TRIGGER_MANUAL)
         messages.success(
             request,
             'Landscape report queued — the background worker will generate it shortly '

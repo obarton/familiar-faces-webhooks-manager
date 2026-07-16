@@ -106,23 +106,29 @@ class CompetitorSource(BaseModel):
 
 
 class LandscapeReport(BaseModel):
-    """The latest AI-generated competitive-landscape report (markdown) across all
-    tracked accounts, plus its background-generation state.
+    """One AI-generated competitive-landscape report (markdown) across all tracked
+    accounts. Append-only history: each generation creates a new row, so past
+    months' reports are kept and browsable.
 
     Generation is slow (web search runs a multi-step server-side loop that can take
     minutes), so it can't run inside a web request without tripping the gunicorn
-    worker timeout. Instead the UI flags `generation_requested` and the
-    refresh_competitors worker picks it up and fills in the report — the same
-    queue pattern CompetitorSource.refresh_requested uses for crawls.
+    worker timeout. Instead a row is queued (`generation_requested`) and the
+    refresh_competitors worker picks it up and fills in the markdown — the same
+    queue pattern CompetitorSource.refresh_requested uses for crawls. The worker
+    also auto-queues one report per calendar month.
 
-    Treated as a singleton (see `get_solo`): a single row holds both the current
-    report and its status.
+    A row with non-empty `markdown` is a finished report (history); a row with empty
+    `markdown` is an in-flight or failed generation run. This split is what
+    `latest_ready`/`active_run`/`history` key off, so no status backfill is needed.
     """
     STATUS_IDLE = 'idle'
     STATUS_QUEUED = 'queued'
     STATUS_GENERATING = 'generating'
     STATUS_READY = 'ready'
     STATUS_FAILED = 'failed'
+
+    TRIGGER_MANUAL = 'manual'
+    TRIGGER_SCHEDULED = 'scheduled'
 
     markdown = models.TextField(blank=True, default='')
 
@@ -131,6 +137,8 @@ class LandscapeReport(BaseModel):
     status = models.CharField(max_length=20, default=STATUS_IDLE)
     last_error = models.TextField(blank=True, default='')
     generated_at = models.DateTimeField(null=True, blank=True)
+    # What kicked off this report: a UI click (manual) or the monthly sweep (scheduled).
+    trigger = models.CharField(max_length=20, default=TRIGGER_MANUAL)
 
     class Meta:
         ordering = ['-created_at']
@@ -138,10 +146,31 @@ class LandscapeReport(BaseModel):
     def __str__(self):
         return f'Landscape report {self.created_at:%Y-%m-%d %H:%M}'
 
+    # --- History vs. in-flight run -----------------------------------------
     @classmethod
-    def get_solo(cls):
-        """The one landscape-report row, creating an empty one if none exists."""
-        return cls.objects.first() or cls.objects.create()
+    def latest_ready(cls):
+        """The most recent finished report (a row that has content), or None."""
+        return cls.objects.exclude(markdown='').first()
+
+    @classmethod
+    def active_run(cls):
+        """The current queued/generating/failed run (an empty row), or None."""
+        return cls.objects.filter(markdown='').order_by('-created_at').first()
+
+    @classmethod
+    def history(cls):
+        """All finished reports, newest first."""
+        return cls.objects.exclude(markdown='')
+
+    @classmethod
+    def queue(cls, trigger=TRIGGER_MANUAL):
+        """Queue a new generation and return the row. Clears any leftover empty run
+        rows first (never touches rows that have content, so history is preserved),
+        so there's at most one pending run at a time."""
+        cls.objects.filter(markdown='').delete()
+        return cls.objects.create(
+            status=cls.STATUS_QUEUED, generation_requested=True, trigger=trigger,
+        )
 
     @property
     def has_report(self):
@@ -151,6 +180,11 @@ class LandscapeReport(BaseModel):
     def is_working(self):
         """True while a generation is queued or running (UI polls until done)."""
         return self.status in (self.STATUS_QUEUED, self.STATUS_GENERATING)
+
+    @property
+    def period_label(self):
+        """Human month label for the report, e.g. 'July 2026'."""
+        return (self.generated_at or self.created_at).strftime('%B %Y')
 
 
 class CompetitorContentItem(BaseModel):

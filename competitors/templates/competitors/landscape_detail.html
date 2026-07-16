@@ -1,0 +1,36 @@
+{% extends "webhooks/base.html" %}
+
+{% block title %}{{ report.period_label }} Landscape — Competitor Content Tracker{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'competitors:dashboard' %}">Competitors</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'competitors:landscape' %}">AI Landscape</a></li>
+    <li class="breadcrumb-item active">{{ report.period_label }}</li>
+  </ol>
+</nav>
+
+<div class="page-header">
+  <div>
+    <h1><i class="bi bi-stars" style="color:var(--accent);"></i> {{ report.period_label }} landscape</h1>
+    <div class="text-muted" style="font-size:0.82rem; margin-top:4px;">
+      Generated {{ report.generated_at|date:"F j, Y, g:i A" }}{% if report.trigger == 'scheduled' %} (automatic monthly report){% endif %}
+    </div>
+  </div>
+  <a href="{% url 'competitors:landscape' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i> Back to latest
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body p-4">
+    <div class="md-report">{{ report_html }}</div>
+  </div>
+</div>
+<p class="text-muted mt-2" style="font-size:0.72rem;">
+  A historical snapshot — figures were approximate and directional at the time of generation.
+</p>
+
+{% include "competitors/_report_styles.html" %}
+{% endblock %}

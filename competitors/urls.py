@@ -8,6 +8,7 @@ urlpatterns = [
     path('', views.dashboard, name='dashboard'),
     path('landscape/', views.landscape, name='landscape'),
     path('landscape/generate/', views.landscape_generate, name='landscape_generate'),
+    path('landscape/<uuid:id>/', views.landscape_detail, name='landscape_detail'),
     path('sources/create/', views.source_create, name='source_create'),
     path('sources/<uuid:id>/', views.competitor_detail, name='competitor_detail'),
     path('sources/<uuid:id>/summary/', views.competitor_summary, name='competitor_summary'),

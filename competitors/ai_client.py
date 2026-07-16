@@ -293,16 +293,17 @@ def generate_landscape():
         return None
 
 
-def generate_and_store_landscape():
-    """Generate the landscape report into the singleton row, tracking status.
+def generate_and_store_landscape(report):
+    """Generate the landscape report into the given queued row, tracking status.
 
     Runs off the request path (called by the refresh_competitors worker); slow
     because of web search. Returns True on success. Records status/last_error on
-    the row so the UI can show progress and failures.
+    the row so the UI can show progress and failures. On success the row's markdown
+    is filled, so it becomes a permanent history entry (append-only — prior reports
+    are left untouched).
     """
     from .models import LandscapeReport
 
-    report = LandscapeReport.get_solo()
     report.status = LandscapeReport.STATUS_GENERATING
     report.save(update_fields=['status', 'updated_at'])
 

@@ -56,6 +56,12 @@ class Command(BaseCommand):
             action='store_true',
             help='List which sources would be crawled without crawling.',
         )
+        parser.add_argument(
+            '--no-auto-landscape',
+            action='store_true',
+            help='Skip the monthly landscape auto-regeneration sweep. UI-queued '
+                 'landscape reports are still generated.',
+        )
 
     def handle(self, *args, **options):
         loop_secs = options.get('loop')
@@ -94,9 +100,43 @@ class Command(BaseCommand):
             due |= Q(last_crawled_at__isnull=True) | Q(last_crawled_at__lt=cutoff)
         return list(qs.filter(due))
 
+    # Keep this many finished landscape reports; older ones are pruned.
+    _LANDSCAPE_HISTORY_LIMIT = 12
+
+    def _landscape_regeneration_due(self):
+        """True if the monthly landscape sweep should auto-queue a report now: AI
+        configured, some accounts tracked, nothing already pending, and no report
+        row created yet this calendar month (so exactly one auto-attempt per month,
+        even if it fails)."""
+        if not ai_client.is_configured() or not CompetitorSource.objects.exists():
+            return False
+        if LandscapeReport.objects.filter(generation_requested=True).exists():
+            return False
+        now = timezone.now()
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return not LandscapeReport.objects.filter(created_at__gte=month_start).exists()
+
+    def _prune_landscape_history(self):
+        """Keep only the newest _LANDSCAPE_HISTORY_LIMIT finished reports."""
+        stale = list(
+            LandscapeReport.history()
+            .values_list('id', flat=True)[self._LANDSCAPE_HISTORY_LIMIT:]
+        )
+        if stale:
+            LandscapeReport.objects.filter(id__in=stale).delete()
+
     def _process_landscape(self, options):
-        """Generate the landscape report if one was queued from the UI. Runs off the
-        request path here because web search is too slow for a web request."""
+        """Generate the landscape report if one is queued (from the UI or the monthly
+        sweep). Runs off the request path here because web search is too slow for a
+        web request."""
+        # Monthly auto-regeneration: queue a report the first pass of each new month.
+        if not options.get('no_auto_landscape') and self._landscape_regeneration_due():
+            if options['dry_run']:
+                self.stdout.write('[dry-run] would auto-queue the monthly landscape report')
+            else:
+                LandscapeReport.queue(trigger=LandscapeReport.TRIGGER_SCHEDULED)
+                self.stdout.write('Auto-queued the monthly landscape report.')
+
         report = LandscapeReport.objects.filter(generation_requested=True).first()
         if not report:
             return
@@ -117,11 +157,12 @@ class Command(BaseCommand):
 
         self.stdout.write('Generating landscape report (web search)…')
         try:
-            ok = ai_client.generate_and_store_landscape()
+            ok = ai_client.generate_and_store_landscape(report)
         except Exception as exc:  # guarded internally, but never kill the pass
             self.stderr.write(self.style.ERROR(f'Landscape generation errored: {exc}'))
             return
         if ok:
+            self._prune_landscape_history()
             self.stdout.write(self.style.SUCCESS('Landscape report generated.'))
         else:
             self.stderr.write(self.style.ERROR('Landscape report generation failed — see logs.'))
