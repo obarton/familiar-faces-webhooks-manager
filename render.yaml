@@ -70,9 +70,11 @@ services:
 
   # 2. Background refresh worker (as a scheduled cron job) -----------------
   # Runs the one-shot command every 15 minutes: it crawls any competitor that
-  # was queued from the UI or has gone stale, then exits. Cheaper than an
-  # always-on worker. (For an always-on worker instead, change `type: cron` +
-  # `schedule` to `type: worker` and use `--loop 900` in the start command.)
+  # was queued from the UI or has gone stale, generates any queued AI landscape
+  # report, and auto-queues a fresh landscape report once per calendar month,
+  # then exits. Cheaper than an always-on worker. (For an always-on worker
+  # instead, change `type: cron` + `schedule` to `type: worker` and use
+  # `--loop 900` in the start command.)
   - type: cron
     name: marketing-ops-refresh
     runtime: python
