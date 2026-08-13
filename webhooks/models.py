@@ -18,6 +18,8 @@ class WebhookEndpoint(BaseModel):
     slug = models.SlugField(max_length=24, unique=True, editable=False)
     description = models.TextField(blank=True, default='')
     is_active = models.BooleanField(default=True)
+    forward_url = models.URLField(blank=True, default='')
+    forward_enabled = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['-created_at']
@@ -46,6 +48,8 @@ class WebhookEvent(BaseModel):
     source_ip = models.GenericIPAddressField(null=True, blank=True)
     sheet_tag = models.CharField(max_length=200, null=True, blank=True)
     mailchimp_tag = models.CharField(max_length=200, null=True, blank=True)
+    forward_status = models.CharField(max_length=50, null=True, blank=True)
+    forwarded_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']

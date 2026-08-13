@@ -25,6 +25,9 @@
     <a href="{% url 'webhooks:endpoint_test' endpoint.id %}" class="btn btn-sm btn-outline-secondary">
       <i class="bi bi-send"></i> Send Test
     </a>
+    <a href="{% url 'webhooks:endpoint_edit' endpoint.id %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-pencil"></i> Edit
+    </a>
     <a href="{% url 'webhooks:endpoint_delete' endpoint.id %}" class="btn btn-sm btn-outline-danger">
       <i class="bi bi-trash3"></i> Delete
     </a>
@@ -47,6 +50,36 @@
     <p class="text-muted mt-2 mb-0" style="font-size:0.75rem;">
       Send any HTTP request to this URL — GET, POST, PUT, PATCH, DELETE are all captured.
     </p>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span>Forwarding</span>
+    {% if endpoint.forward_enabled and endpoint.forward_url %}
+      <span class="badge rounded-pill badge-active"><span class="pulse-dot me-1"></span>on</span>
+    {% else %}
+      <span class="badge rounded-pill badge-inactive">off</span>
+    {% endif %}
+  </div>
+  <div class="card-body p-3">
+    {% if endpoint.forward_url %}
+      <div class="url-box">
+        <code>{{ endpoint.forward_url }}</code>
+      </div>
+      <p class="text-muted mt-2 mb-0" style="font-size:0.75rem;">
+        {% if endpoint.forward_enabled %}
+          Each received event is relayed here after processing.
+        {% else %}
+          Forwarding is turned off. <a href="{% url 'webhooks:endpoint_edit' endpoint.id %}">Enable it</a> to relay events.
+        {% endif %}
+      </p>
+    {% else %}
+      <p class="text-muted mb-0" style="font-size:0.75rem;">
+        No forward URL set. <a href="{% url 'webhooks:endpoint_edit' endpoint.id %}">Add one</a> to relay
+        received events to another system.
+      </p>
+    {% endif %}
   </div>
 </div>
 

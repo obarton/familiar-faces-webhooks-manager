@@ -1,17 +1,18 @@
 {% extends "webhooks/base.html" %}
 
-{% block title %}New Endpoint — Marketing Ops Dashboard{% endblock %}
+{% block title %}Edit {{ endpoint.name }} — Marketing Ops Dashboard{% endblock %}
 
 {% block content %}
 <nav aria-label="breadcrumb" class="mb-4">
   <ol class="breadcrumb">
     <li class="breadcrumb-item"><a href="{% url 'webhooks:endpoint_list' %}">Endpoints</a></li>
-    <li class="breadcrumb-item active">New Endpoint</li>
+    <li class="breadcrumb-item"><a href="{% url 'webhooks:endpoint_detail' endpoint.id %}">{{ endpoint.name }}</a></li>
+    <li class="breadcrumb-item active">Edit</li>
   </ol>
 </nav>
 
 <div class="page-header">
-  <h1>New Endpoint</h1>
+  <h1>Edit Endpoint</h1>
 </div>
 
 <div class="card" style="max-width: 540px;">
@@ -60,9 +61,9 @@
 
       <div class="d-flex gap-2">
         <button type="submit" class="btn btn-primary btn-sm">
-          <i class="bi bi-plus-lg"></i> Create Endpoint
+          <i class="bi bi-check-lg"></i> Save Changes
         </button>
-        <a href="{% url 'webhooks:endpoint_list' %}" class="btn btn-sm btn-outline-secondary">Cancel</a>
+        <a href="{% url 'webhooks:endpoint_detail' endpoint.id %}" class="btn btn-sm btn-outline-secondary">Cancel</a>
       </div>
     </form>
   </div>

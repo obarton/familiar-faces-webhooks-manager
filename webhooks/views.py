@@ -11,6 +11,7 @@ from django.db.models.functions import Coalesce
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import csrf_exempt
 
@@ -59,6 +60,20 @@ def endpoint_create(request):
         messages.success(request, f'Endpoint "{endpoint.name}" created.')
         return redirect('webhooks:endpoint_detail', id=endpoint.id)
     return render(request, 'webhooks/endpoint_create.html', {'form': form})
+
+
+@login_required
+def endpoint_edit(request, id):
+    endpoint = get_object_or_404(WebhookEndpoint, id=id)
+    form = WebhookEndpointForm(request.POST or None, instance=endpoint)
+    if form.is_valid():
+        form.save()
+        messages.success(request, f'Endpoint "{endpoint.name}" updated.')
+        return redirect('webhooks:endpoint_detail', id=endpoint.id)
+    return render(request, 'webhooks/endpoint_edit.html', {
+        'form': form,
+        'endpoint': endpoint,
+    })
 
 
 @login_required
@@ -211,8 +226,20 @@ def receive_webhook(request, slug):
     )
 
     _process_event(event)
+    _forward_event(event)
 
     return HttpResponse('OK', status=200)
+
+
+def _forward_event(event):
+    """Relay a processed event to its endpoint's forward URL, recording the
+    delivery result on the event. No-op when forwarding is disabled."""
+    from .forward_client import forward_event
+    status = forward_event(event.endpoint, event)
+    if status is not None:
+        event.forward_status = status
+        event.forwarded_at = timezone.now()
+        event.save(update_fields=['forward_status', 'forwarded_at'])
 
 
 def _process_event(event):
@@ -294,5 +321,6 @@ def event_replay(request, id, event_id):
         source_ip=original.source_ip,
     )
     _process_event(replay)
+    _forward_event(replay)
     messages.success(request, 'Event replayed.')
     return redirect('webhooks:event_detail', id=id, event_id=replay.id)
