@@ -101,6 +101,10 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# Only used by the one-time `import_event_tags` management command that seeds the
+# local EventTag table from the legacy Google Sheet. Nothing in the request path
+# reads these anymore; both (and the gspread dependency) can be removed once the
+# import has been run in production.
 GOOGLE_CREDENTIALS_JSON = os.environ.get('GOOGLE_CREDENTIALS_JSON', '')
 GOOGLE_SPREADSHEET_ID = os.environ.get('GOOGLE_SPREADSHEET_ID', '1TnOUIheEznDDl6AV7WoI2gcoRsExCvjGo10MX9Zf58E')
 

@@ -3,7 +3,7 @@ gunicorn
 psycopg2-binary
 dj-database-url
 whitenoise
-gspread
+gspread  # only for the one-time import_event_tags command; removable after seeding EventTag
 python-dotenv
 firecrawl-py
 apify-client

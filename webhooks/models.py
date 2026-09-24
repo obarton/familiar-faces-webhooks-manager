@@ -84,3 +84,24 @@ class WebhookEvent(BaseModel):
     @property
     def is_replay(self):
         return bool(self.replay_of)
+
+
+class EventTag(BaseModel):
+    """Per-event Mailchimp tag, keyed by (city, event_date).
+
+    App-owned replacement for the Google Sheet that previously held this data.
+    Editable in Django admin; seeded once from the sheet by the
+    import_event_tags management command.
+    """
+    city = models.CharField(max_length=200)
+    event_date = models.DateField()
+    tag = models.CharField(max_length=200)
+
+    class Meta:
+        ordering = ['-event_date', 'city']
+        indexes = [
+            models.Index(fields=['city', 'event_date']),
+        ]
+
+    def __str__(self):
+        return f"{self.city} @ {self.event_date} → {self.tag}"

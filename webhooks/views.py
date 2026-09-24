@@ -229,7 +229,7 @@ def _process_event(event):
         raw_start = payload.get('event_start', '')
 
         if raw_name and raw_start:
-            from .sheets import extract_city, get_event_tag, get_mailchimp_tag
+            from .tags import extract_city, get_event_tag, get_mailchimp_tag
             city = extract_city(raw_name)
             if city:
                 try:
