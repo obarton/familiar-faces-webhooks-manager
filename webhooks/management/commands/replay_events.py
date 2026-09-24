@@ -1,7 +1,6 @@
 from django.core.management.base import BaseCommand
 
 from webhooks.models import WebhookEndpoint, WebhookEvent
-from webhooks.sheets import cached_sheet_rows
 from webhooks.views import _process_event
 
 
@@ -10,8 +9,8 @@ class Command(BaseCommand):
         "Re-process stored webhook events in place: re-run event/market tag "
         "resolution and Mailchimp sync for each event, updating its sheet_tag / "
         "mailchimp_tag. Useful for backfilling events that were received before a "
-        "tag-matching fix. Does NOT create new event rows. The Google Sheet is "
-        "fetched once per run (not once per event). Note: events with an "
+        "tag-matching fix. Does NOT create new event rows. Tags resolve from the "
+        "local EventTag table. Note: events with an "
         "account_email are re-synced to Mailchimp (idempotent, but real API "
         "calls) -- use --dry-run / --limit / --only-untagged to scope a run."
     )
@@ -76,14 +75,13 @@ class Command(BaseCommand):
 
         processed = 0
         tagged = 0
-        with cached_sheet_rows():
-            for event in qs.iterator():
-                _process_event(event)
-                processed += 1
-                if event.sheet_tag or event.mailchimp_tag:
-                    tagged += 1
-                if processed % 25 == 0:
-                    self.stdout.write(f"replay_events: processed {processed}/{planned}...")
+        for event in qs.iterator():
+            _process_event(event)
+            processed += 1
+            if event.sheet_tag or event.mailchimp_tag:
+                tagged += 1
+            if processed % 25 == 0:
+                self.stdout.write(f"replay_events: processed {processed}/{planned}...")
 
         self.stdout.write(
             self.style.SUCCESS(

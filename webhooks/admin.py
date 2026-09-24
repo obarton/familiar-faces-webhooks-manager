@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import WebhookEndpoint, WebhookEvent
+from .models import EventTag, WebhookEndpoint, WebhookEvent
 
 
 @admin.register(WebhookEndpoint)
@@ -20,3 +20,12 @@ class WebhookEventAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(EventTag)
+class EventTagAdmin(admin.ModelAdmin):
+    list_display = ['city', 'event_date', 'tag', 'updated_at']
+    list_filter = ['city']
+    search_fields = ['city', 'tag']
+    ordering = ['-event_date', 'city']
+    readonly_fields = ['id', 'created_at', 'updated_at']
