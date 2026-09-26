@@ -87,6 +87,19 @@
     </div>
   </div>
   {% endif %}
+  {% if event.forwarded_at %}
+  <div class="col-sm-6 col-md-3">
+    <div class="card p-3">
+      <div class="text-muted" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em;">Forwarded</div>
+      <div style="font-size:0.875rem; margin-top:4px;">
+        <code style="color:{% if '2' == event.forward_status|slice:':1' %}var(--ok-fg){% else %}var(--warn-fg){% endif %};">{{ event.forward_status }}</code>
+        <div style="font-size:0.72rem; color:var(--text-subtle); font-family:'JetBrains Mono',monospace;">
+          {{ event.forwarded_at|date:"H:i:s" }}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </div>
 
 <div class="card mb-3">

@@ -5,7 +5,7 @@ from .models import EventTag, WebhookEndpoint
 class WebhookEndpointForm(forms.ModelForm):
     class Meta:
         model = WebhookEndpoint
-        fields = ['name', 'description']
+        fields = ['name', 'description', 'forward_enabled', 'forward_url']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -16,6 +16,13 @@ class WebhookEndpointForm(forms.ModelForm):
                 'class': 'form-control',
                 'rows': 2,
                 'placeholder': 'Optional description',
+            }),
+            'forward_enabled': forms.CheckboxInput(attrs={
+                'class': 'form-check-input',
+            }),
+            'forward_url': forms.URLInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'https://example.com/webhook',
             }),
         }
 

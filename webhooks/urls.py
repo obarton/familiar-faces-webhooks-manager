@@ -11,6 +11,7 @@ urlpatterns = [
     path('tags/<uuid:id>/edit/', views.tag_edit, name='tag_edit'),
     path('tags/<uuid:id>/delete/', views.tag_delete, name='tag_delete'),
     path('<uuid:id>/', views.endpoint_detail, name='endpoint_detail'),
+    path('<uuid:id>/edit/', views.endpoint_edit, name='endpoint_edit'),
     path('<uuid:id>/delete/', views.endpoint_delete, name='endpoint_delete'),
     path('<uuid:id>/events/<uuid:event_id>/', views.event_detail, name='event_detail'),
     path('<uuid:id>/events/<uuid:event_id>/replay/', views.event_replay, name='event_replay'),
