@@ -1,0 +1,44 @@
+{% extends "webhooks/base.html" %}
+
+{% block title %}Delete Tag — Marketing Ops Dashboard{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'webhooks:tag_list' %}">Event Tags</a></li>
+    <li class="breadcrumb-item active">Delete</li>
+  </ol>
+</nav>
+
+<div style="max-width: 480px;">
+  <div class="card" style="border-color: var(--danger-bd);">
+    <div class="card-header" style="border-color: var(--danger-bd); color: var(--danger-fg);">
+      <i class="bi bi-exclamation-triangle-fill me-1"></i> Confirm deletion
+    </div>
+    <div class="card-body p-4">
+      <p style="color:var(--text);">
+        Delete this event tag?
+      </p>
+      <dl class="mb-3" style="font-size:0.875rem;">
+        <dt class="text-muted" style="font-weight:500;">City</dt>
+        <dd>{% if tag.city %}{{ tag.city }}{% else %}<span class="text-muted fst-italic">no city</span>{% endif %}</dd>
+        <dt class="text-muted" style="font-weight:500;">Event date</dt>
+        <dd>{{ tag.event_date|date:"D M j, Y" }}</dd>
+        <dt class="text-muted" style="font-weight:500;">Tag</dt>
+        <dd><code style="color:var(--accent); font-family:'JetBrains Mono',monospace;">{{ tag.tag }}</code></dd>
+      </dl>
+      <p class="text-muted" style="font-size:0.875rem;">This cannot be undone.</p>
+
+      <form method="post" class="d-flex gap-2 mt-4">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-danger">
+          <i class="bi bi-trash3"></i> Delete permanently
+        </button>
+        <a href="{% url 'webhooks:tag_list' %}" class="btn btn-sm btn-outline-secondary">
+          Cancel
+        </a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

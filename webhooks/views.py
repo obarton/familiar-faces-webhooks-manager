@@ -5,6 +5,7 @@ from datetime import datetime
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import RequestDataTooBig, TooManyFieldsSent, ValidationError
+from django.core.paginator import Paginator
 from django.core.validators import validate_ipv46_address
 from django.db.models import Count, Subquery, OuterRef
 from django.db.models.functions import Coalesce
@@ -14,8 +15,8 @@ from django.urls import reverse
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import csrf_exempt
 
-from .forms import WebhookEndpointForm
-from .models import WebhookEndpoint, WebhookEvent
+from .forms import EventTagForm, WebhookEndpointForm
+from .models import EventTag, WebhookEndpoint, WebhookEvent
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +94,68 @@ def endpoint_delete(request, id):
         'endpoint': endpoint,
         'event_count': event_count,
     })
+
+
+# Sentinel used by the tag list city filter to target rows whose city is blank,
+# since an empty querystring value is indistinguishable from "no filter".
+BLANK_CITY = '__none__'
+
+
+@login_required
+def tag_list(request):
+    qs = EventTag.objects.all()
+    city = request.GET.get('city')
+    if city == BLANK_CITY:
+        qs = qs.filter(city='')
+    elif city:
+        qs = qs.filter(city=city)
+
+    distinct = EventTag.objects.order_by('city').values_list('city', flat=True).distinct()
+    city_options = [
+        {'value': BLANK_CITY if c == '' else c,
+         'label': '— (no city) —' if c == '' else c}
+        for c in distinct
+    ]
+
+    paginator = Paginator(qs, PAGE_SIZE)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    return render(request, 'webhooks/tag_list.html', {
+        'page_obj': page_obj,
+        'city_options': city_options,
+        'selected_city': city or '',
+    })
+
+
+@login_required
+def tag_create(request):
+    form = EventTagForm(request.POST or None)
+    if form.is_valid():
+        tag = form.save()
+        messages.success(request, f'Tag "{tag.tag}" created.')
+        return redirect('webhooks:tag_list')
+    return render(request, 'webhooks/tag_form.html', {'form': form, 'is_edit': False})
+
+
+@login_required
+def tag_edit(request, id):
+    tag = get_object_or_404(EventTag, id=id)
+    form = EventTagForm(request.POST or None, instance=tag)
+    if form.is_valid():
+        form.save()
+        messages.success(request, f'Tag "{tag.tag}" updated.')
+        return redirect('webhooks:tag_list')
+    return render(request, 'webhooks/tag_form.html', {'form': form, 'tag': tag, 'is_edit': True})
+
+
+@login_required
+def tag_delete(request, id):
+    tag = get_object_or_404(EventTag, id=id)
+    if request.method == 'POST':
+        label = tag.tag
+        tag.delete()
+        messages.success(request, f'Tag "{label}" deleted.')
+        return redirect('webhooks:tag_list')
+    return render(request, 'webhooks/tag_confirm_delete.html', {'tag': tag})
 
 
 @login_required
