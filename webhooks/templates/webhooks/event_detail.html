@@ -38,8 +38,8 @@
     <div class="card p-3">
       <div class="text-muted" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:.06em;">Time</div>
       <div style="font-family:'JetBrains Mono',monospace; font-size:0.875rem; margin-top:4px;">
-        {{ event.created_at|date:"H:i:s" }}<br>
-        <span style="font-size:0.75rem; color:var(--text-subtle);">{{ event.created_at|date:"M j, Y" }}</span>
+        <span class="event-time" data-ts="{{ event.created_at.isoformat }}">{{ event.created_at|date:"H:i:s" }}</span><br>
+        <span class="event-date" style="font-size:0.75rem; color:var(--text-subtle);">{{ event.created_at|date:"M j, Y" }}</span>
       </div>
     </div>
   </div>
@@ -152,4 +152,19 @@
     {% endif %}
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  // Render the server-supplied (UTC) timestamp in the browser's local timezone.
+  const span = document.querySelector('.event-time[data-ts]');
+  if (!span) return;
+  const d = new Date(span.dataset.ts);
+  if (isNaN(d.getTime())) return;
+  span.textContent = d.toLocaleTimeString('en-US', { hour12: true });
+  const dateEl = document.querySelector('.event-date');
+  if (dateEl) dateEl.textContent = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+})();
+</script>
 {% endblock %}
