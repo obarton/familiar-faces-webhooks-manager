@@ -313,6 +313,9 @@
       <a class="nav-link-top" href="{% url 'competitors:dashboard' %}">
         <i class="bi bi-binoculars"></i> Competitors
       </a>
+      <a class="nav-link-top" href="{% url 'webhooks:tag_list' %}">
+        <i class="bi bi-tags"></i> Tags
+      </a>
       {% endif %}
     </div>
     {% if user.is_authenticated %}
