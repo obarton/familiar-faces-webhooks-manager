@@ -77,10 +77,10 @@
               <span class="method-badge method-{{ event.method|lower }}">{{ event.method }}</span>
             </td>
             <td>
-              <span style="font-family:'JetBrains Mono',monospace; font-size:0.8rem;">
+              <span class="event-time" data-ts="{{ event.created_at.isoformat }}" style="font-family:'JetBrains Mono',monospace; font-size:0.8rem;">
                 {{ event.created_at|date:"H:i:s" }}
               </span>
-              <div class="text-muted" style="font-size:0.7rem;">{{ event.created_at|date:"M j" }}</div>
+              <div class="event-date text-muted" style="font-size:0.7rem;">{{ event.created_at|date:"M j" }}</div>
             </td>
             <td>
               <code style="font-size:0.75rem; color:var(--text-muted);">{{ event.source_ip|default:"—" }}</code>
@@ -153,10 +153,30 @@
       .replace(/"/g, '&quot;');
   }
 
+  function formatTime(d) {
+    return d.toLocaleTimeString('en-US', { hour12: true });
+  }
+
+  function formatDate(d) {
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  // Rewrite the server-rendered (UTC) times into the browser's local timezone
+  // so they match the live-polled rows built by buildRow().
+  function hydrateTimes() {
+    document.querySelectorAll('#events-tbody .event-time[data-ts]').forEach(span => {
+      const d = new Date(span.dataset.ts);
+      if (isNaN(d.getTime())) return;
+      span.textContent = formatTime(d);
+      const dateEl = span.parentElement.querySelector('.event-date');
+      if (dateEl) dateEl.textContent = formatDate(d);
+    });
+  }
+
   function buildRow(ev, animate = true) {
     const d = new Date(ev.created_at);
-    const time = d.toLocaleTimeString('en-US', { hour12: false });
-    const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const time = formatTime(d);
+    const date = formatDate(d);
 
     let headersHtml = ev.preview_headers.length
       ? ev.preview_headers.map(([n, v]) =>
@@ -242,6 +262,7 @@
     document.hidden ? stopPolling() : startPolling();
   });
 
+  hydrateTimes();
   startPolling();
 })();
 
